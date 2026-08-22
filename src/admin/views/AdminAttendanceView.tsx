@@ -124,8 +124,7 @@ export const AdminAttendanceView: React.FC = () => {
                   </TableCell>
                   <TableCell><span className="font-mono text-[12px]">{rec.date}</span></TableCell>
                   <TableCell><span className="font-mono text-[13px] font-bold text-[#31a24c]">{rec.checkIn || '—'}</span></TableCell>
-                  <TableCell><span className="font-mono text-[13px] font-bold text-[#e41e3f]">{rec.checkOut || '—'}</span></TableCell>
-                  <TableCell><span className="font-mono font-bold">{rec.totalHours ? `${rec.totalHours}h` : '—'}</span></TableCell>
+                  <TableCell><span className="font-mono font-bold">{rec.workHours ? `${rec.workHours} hrs` : '—'}</span></TableCell>
                   <TableCell><Badge status={rec.status} /></TableCell>
                 </TableRow>
               ))}

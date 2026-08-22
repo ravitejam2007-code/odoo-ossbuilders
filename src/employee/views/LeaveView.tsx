@@ -140,7 +140,7 @@ export const LeaveView: React.FC = () => {
                       <span className="font-mono text-[13px]">{rec.endDate}</span>
                     </TableCell>
                     <TableCell>
-                      <span className="font-bold">{rec.days}</span>
+                      <span className="font-bold">{rec.daysCount}</span>
                     </TableCell>
                     <TableCell>
                       <span className="text-[#5d6c7b] max-w-[160px] truncate block">{rec.reason}</span>

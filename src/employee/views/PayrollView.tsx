@@ -45,12 +45,12 @@ export const PayrollView: React.FC = () => {
               </p>
               {/* DESIGN-meta: display-lg (48px) for net pay */}
               <h2 className="text-[40px] sm:text-[48px] font-[500] leading-[1.17] tracking-[0] text-white">
-                ₹{Number(latest.netPay).toLocaleString('en-IN')}
+                ₹{Number(latest.netSalary).toLocaleString('en-IN')}
               </h2>
               <p className="text-[16px] font-normal text-[#8595a4]">Net take-home</p>
               <div className="flex items-center gap-2 pt-1">
                 <Badge status={latest.status} />
-                <span className="text-[12px] font-normal text-[#8595a4]">Processed on {latest.processedDate}</span>
+                <span className="text-[12px] font-normal text-[#8595a4]">Processed for {latest.month} {latest.year}</span>
               </div>
             </div>
             <Button variant="secondary" size="md"
@@ -68,9 +68,9 @@ export const PayrollView: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* DESIGN-meta: why-buy-tile style with card-icon-feature chrome */}
           {[
-            { label: 'Gross Pay', value: `₹${Number(latest.grossPay || 55000).toLocaleString('en-IN')}`, icon: DollarSign, color: '#31a24c' },
-            { label: 'Deductions', value: `₹${Number(latest.deductions || 8200).toLocaleString('en-IN')}`, icon: TrendingUp, color: '#e41e3f' },
-            { label: 'Net Pay', value: `₹${Number(latest.netPay).toLocaleString('en-IN')}`, icon: DollarSign, color: '#0064e0' },
+            { label: 'Gross Pay', value: `₹${Number(latest.grossSalary || 50000).toLocaleString('en-IN')}`, icon: DollarSign, color: '#31a24c' },
+            { label: 'Deductions', value: `₹${Number(latest.deductions || 3200).toLocaleString('en-IN')}`, icon: TrendingUp, color: '#e41e3f' },
+            { label: 'Net Pay', value: `₹${Number(latest.netSalary).toLocaleString('en-IN')}`, icon: DollarSign, color: '#0064e0' },
           ].map(({ label, value, icon: Icon, color }) => (
             <Card variant="feature" key={label} className="p-5 flex items-center gap-4">
               <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color + '1a' }}>
@@ -143,17 +143,17 @@ export const PayrollView: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <span className="font-mono text-[13px]">
-                        ₹{Number(slip.grossPay || 55000).toLocaleString('en-IN')}
+                        ₹{Number(slip.grossSalary || 50000).toLocaleString('en-IN')}
                       </span>
                     </TableCell>
                     <TableCell>
                       <span className="font-mono text-[13px] text-[#e41e3f]">
-                        −₹{Number(slip.deductions || 8200).toLocaleString('en-IN')}
+                        −₹{Number(slip.deductions || 3200).toLocaleString('en-IN')}
                       </span>
                     </TableCell>
                     <TableCell>
                       <span className="font-mono text-[13px] font-bold text-[#31a24c]">
-                        ₹{Number(slip.netPay).toLocaleString('en-IN')}
+                        ₹{Number(slip.netSalary).toLocaleString('en-IN')}
                       </span>
                     </TableCell>
                     <TableCell>
