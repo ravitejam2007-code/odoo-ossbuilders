@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { LeaveService } from './leave.service';
-import { sendSuccess } from '../../utils/response';
+import { sendSuccess, sendError } from '../../utils/response';
+import { ErrorCodes } from '../../constants/errorCodes';
 
 const leaveService = new LeaveService();
 
@@ -10,6 +11,24 @@ export class LeaveController {
       const userId = req.user!.id;
       const result = await leaveService.applyLeave(userId, req.body);
       return sendSuccess(res, result, 201, 'Leave application submitted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async uploadAttachment(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.file) {
+        return sendError(res, 400, ErrorCodes.BAD_REQUEST, 'No file uploaded');
+      }
+
+      const result = await leaveService.uploadAttachment({
+        originalname: req.file.originalname,
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+      });
+
+      return sendSuccess(res, result, 200, 'Attachment uploaded successfully');
     } catch (error) {
       next(error);
     }

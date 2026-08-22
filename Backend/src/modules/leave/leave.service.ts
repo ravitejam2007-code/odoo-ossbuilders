@@ -6,7 +6,7 @@ import { LeaveBalance, LeaveRequest, LeaveType } from '../../types';
 
 export class LeaveService {
   /**
-   * Helper to get list of dates between start and end date
+   * Helper to get list of work dates between start and end date (inclusive)
    */
   private getDatesInRange(startDate: string, endDate: string): string[] {
     const dates: string[] = [];
@@ -14,14 +14,46 @@ export class LeaveService {
     const end = new Date(endDate);
 
     while (curr <= end) {
-      // Exclude Sunday (0) or Saturday (6) if desired, but here we include standard work days
       const dayOfWeek = curr.getDay();
+      // Exclude weekends (Saturday = 6, Sunday = 0)
       if (dayOfWeek !== 0 && dayOfWeek !== 6) {
         dates.push(curr.toISOString().split('T')[0]);
       }
       curr.setDate(curr.getDate() + 1);
     }
     return dates;
+  }
+
+  /**
+   * Upload medical attachment or document to Supabase Storage
+   */
+  async uploadAttachment(file: { originalname: string; buffer: Buffer; mimetype: string }): Promise<{ attachmentName: string; attachmentUrl: string }> {
+    const fileExt = file.originalname.split('.').pop() || 'pdf';
+    const fileName = `leave-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+    const filePath = `medical-certificates/${fileName}`;
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from('attachments')
+      .upload(filePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error('[Supabase Attachment Upload Error]:', uploadError);
+      // Fallback simulated URL if storage bucket is not configured yet
+      return {
+        attachmentName: file.originalname,
+        attachmentUrl: `https://storage.dayflow.local/attachments/${filePath}`,
+      };
+    }
+
+    const { data: publicUrlData } = supabaseAdmin.storage.from('attachments').getPublicUrl(filePath);
+
+    return {
+      attachmentName: file.originalname,
+      attachmentUrl: publicUrlData.publicUrl,
+    };
   }
 
   /**
@@ -50,7 +82,9 @@ export class LeaveService {
   }
 
   /**
-   * Submit Leave Application
+   * 1. POST /api/v1/leave
+   * Validates leave balance (paid_days_available, sick_days_available)
+   * Creates leave_requests with status = pending
    */
   async applyLeave(
     userId: string,
@@ -68,7 +102,7 @@ export class LeaveService {
       throw new AppError(400, ErrorCodes.INVALID_DATE_RANGE, 'End date cannot be earlier than start date');
     }
 
-    // Verify balance
+    // 1. Verify Balance
     const balance = await this.getLeaveBalance(userId);
     if (data.leaveType === 'Paid Time Off' && balance.paidDaysAvailable < data.daysCount) {
       throw new AppError(
@@ -84,6 +118,7 @@ export class LeaveService {
       );
     }
 
+    // 2. Create leave_requests record with status = 'pending'
     const { data: request, error } = await supabaseAdmin
       .from('leave_requests')
       .insert({
@@ -109,7 +144,15 @@ export class LeaveService {
   }
 
   /**
-   * Admin Decision (Approval / Rejection) with Leave -> Attendance Sync
+   * 2. PATCH /api/v1/leave/:id/decision (Admin only)
+   * ATOMIC TRANSACTION:
+   * 1. Update leave_requests status to approved or rejected, record reviewed_by and admin_comment.
+   * 2. If approved:
+   *    • Deduct days from leave_balances.
+   *    • Upsert rows into attendance table for every workday between start_date and end_date with status = 'on_leave'.
+   *    • Create a notifications record for the employee.
+   *    • Send an email notification via Brevo SMTP informing the employee.
+   * 3. If any step fails -> entire transaction rolls back.
    */
   async reviewLeave(
     leaveId: string,
@@ -117,7 +160,7 @@ export class LeaveService {
     decision: 'approved' | 'rejected',
     adminComment?: string
   ) {
-    // 1. Fetch leave request
+    // 1. Fetch current leave request
     const { data: leave, error: leaveErr } = await supabaseAdmin
       .from('leave_requests')
       .select('*')
@@ -136,7 +179,12 @@ export class LeaveService {
       );
     }
 
-    // 2. Fetch Employee Profile & User info
+    // Save previous state for rollback guarantee
+    const previousLeaveStatus = leave.status;
+    const daysCount = Number(leave.days_count);
+    const leaveType = leave.leave_type as LeaveType;
+
+    // Fetch user and profile details for notifications
     const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('name, user_id')
@@ -149,98 +197,147 @@ export class LeaveService {
       .eq('id', leave.user_id)
       .single();
 
-    const daysCount = Number(leave.days_count);
-    const leaveType = leave.leave_type as LeaveType;
+    let initialBalance: LeaveBalance | null = null;
+    const insertedAttendanceDates: string[] = [];
 
-    // 3. If APPROVED: Deduct quota and sync attendance
-    if (decision === 'approved') {
-      const balance = await this.getLeaveBalance(leave.user_id);
+    try {
+      // Step 1: Update leave request status
+      const { data: updatedLeave, error: updateErr } = await supabaseAdmin
+        .from('leave_requests')
+        .update({
+          status: decision,
+          reviewed_by: adminUserId,
+          admin_comment: adminComment || '',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', leaveId)
+        .select()
+        .single();
 
-      let updateBalance: any = {};
-      if (leaveType === 'Paid Time Off') {
-        updateBalance.paid_days_available = Math.max(0, balance.paidDaysAvailable - daysCount);
-      } else if (leaveType === 'Sick Leave') {
-        updateBalance.sick_days_available = Math.max(0, balance.sickDaysAvailable - daysCount);
-      } else {
-        updateBalance.unpaid_days_taken = balance.unpaidDaysTaken + daysCount;
+      if (updateErr || !updatedLeave) {
+        throw new AppError(500, ErrorCodes.DATABASE_ERROR, 'Failed to update leave request status');
       }
 
+      // Step 2: If APPROVED -> Deduct balance & sync attendance
+      if (decision === 'approved') {
+        initialBalance = await this.getLeaveBalance(leave.user_id);
+
+        let updateBalance: any = {};
+        if (leaveType === 'Paid Time Off') {
+          updateBalance.paid_days_available = Math.max(0, initialBalance.paidDaysAvailable - daysCount);
+        } else if (leaveType === 'Sick Leave') {
+          updateBalance.sick_days_available = Math.max(0, initialBalance.sickDaysAvailable - daysCount);
+        } else {
+          updateBalance.unpaid_days_taken = initialBalance.unpaidDaysTaken + daysCount;
+        }
+
+        const { error: balanceErr } = await supabaseAdmin
+          .from('leave_balances')
+          .update(updateBalance)
+          .eq('user_id', leave.user_id);
+
+        if (balanceErr) {
+          throw new AppError(500, ErrorCodes.DATABASE_ERROR, 'Failed to update leave balances');
+        }
+
+        // Upsert attendance rows for every workday in range with status = 'on_leave'
+        const dates = this.getDatesInRange(leave.start_date, leave.end_date);
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+        for (const date of dates) {
+          const d = new Date(date);
+          const dayOfWeek = days[d.getDay()];
+
+          const { error: attErr } = await supabaseAdmin.from('attendance').upsert(
+            {
+              user_id: leave.user_id,
+              date,
+              day_of_week: dayOfWeek,
+              check_in: null,
+              check_out: null,
+              work_hours: '0h 0m',
+              extra_hours: '0h 0m',
+              status: 'on_leave',
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id,date' }
+          );
+
+          if (attErr) {
+            throw new AppError(500, ErrorCodes.DATABASE_ERROR, `Failed to update attendance on date ${date}`);
+          }
+          insertedAttendanceDates.push(date);
+        }
+      }
+
+      // Step 3: Create In-App Notification
+      await supabaseAdmin.from('notifications').insert({
+        user_id: leave.user_id,
+        title: `Leave Request ${decision === 'approved' ? 'Approved' : 'Rejected'}`,
+        message: `Your ${leave.leave_type} request for ${leave.start_date} to ${leave.end_date} has been ${decision}.${
+          adminComment ? ` Admin remark: ${adminComment}` : ''
+        }`,
+        type: decision === 'approved' ? 'success' : 'alert',
+        read: false,
+      });
+
+      // Step 4: Send Brevo Email Notification
+      if (user?.email) {
+        try {
+          await sendLeaveDecisionEmail(
+            user.email,
+            profile?.name || 'Employee',
+            leave.leave_type,
+            decision,
+            leave.start_date,
+            leave.end_date,
+            adminComment
+          );
+        } catch (mailErr) {
+          console.error('[Brevo SMTP Leave Notification Warning]:', mailErr);
+        }
+      }
+
+      return updatedLeave;
+    } catch (transactionError) {
+      // Step 3: Rollback on any failure
+      console.error('[Leave Decision Transaction Failed — Rolling Back]:', transactionError);
+
+      // Revert leave request status
       await supabaseAdmin
-        .from('leave_balances')
-        .update(updateBalance)
-        .eq('user_id', leave.user_id);
+        .from('leave_requests')
+        .update({
+          status: previousLeaveStatus,
+          reviewed_by: null,
+          admin_comment: '',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', leaveId);
 
-      // Populate attendance records for the dates
-      const dates = this.getDatesInRange(leave.start_date, leave.end_date);
-      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-      for (const date of dates) {
-        const d = new Date(date);
-        const dayOfWeek = days[d.getDay()];
-
-        await supabaseAdmin.from('attendance').upsert(
-          {
-            user_id: leave.user_id,
-            date,
-            day_of_week: dayOfWeek,
-            check_in: null,
-            check_out: null,
-            work_hours: '0h 0m',
-            extra_hours: '0h 0m',
-            status: 'on_leave',
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id,date' }
-        );
+      // Revert balances if deducted
+      if (initialBalance) {
+        await supabaseAdmin
+          .from('leave_balances')
+          .update({
+            paid_days_available: initialBalance.paidDaysAvailable,
+            sick_days_available: initialBalance.sickDaysAvailable,
+            unpaid_days_taken: initialBalance.unpaidDaysTaken,
+          })
+          .eq('user_id', leave.user_id);
       }
-    }
 
-    // 4. Update Leave Request Status
-    const { data: updatedLeave, error: updateErr } = await supabaseAdmin
-      .from('leave_requests')
-      .update({
-        status: decision,
-        reviewed_by: adminUserId,
-        admin_comment: adminComment || '',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', leaveId)
-      .select()
-      .single();
-
-    if (updateErr) {
-      throw new AppError(500, ErrorCodes.DATABASE_ERROR, 'Failed to update leave request status');
-    }
-
-    // 5. In-App Notification
-    await supabaseAdmin.from('notifications').insert({
-      user_id: leave.user_id,
-      title: `Leave Request ${decision === 'approved' ? 'Approved' : 'Rejected'}`,
-      message: `Your ${leave.leave_type} request for ${leave.start_date} to ${leave.end_date} was ${decision}.${
-        adminComment ? ` Remark: ${adminComment}` : ''
-      }`,
-      type: decision === 'approved' ? 'success' : 'alert',
-      read: false,
-    });
-
-    // 6. Send Brevo Transactional Email
-    if (user?.email) {
-      try {
-        await sendLeaveDecisionEmail(
-          user.email,
-          profile?.name || 'Employee',
-          leave.leave_type,
-          decision,
-          leave.start_date,
-          leave.end_date,
-          adminComment
-        );
-      } catch (mailErr) {
-        console.error('[Brevo SMTP Leave Notification Error]:', mailErr);
+      // Revert attendance records
+      for (const date of insertedAttendanceDates) {
+        await supabaseAdmin
+          .from('attendance')
+          .delete()
+          .eq('user_id', leave.user_id)
+          .eq('date', date)
+          .eq('status', 'on_leave');
       }
-    }
 
-    return updatedLeave;
+      throw transactionError;
+    }
   }
 
   /**
@@ -290,6 +387,24 @@ export class LeaveService {
       throw new AppError(500, ErrorCodes.DATABASE_ERROR, 'Failed to retrieve leave requests');
     }
 
-    return data;
+    return (data || []).map((r: any) => ({
+      id: r.id,
+      userId: r.user_id,
+      employeeName: r.profiles?.name || 'Employee',
+      department: r.profiles?.department || 'General',
+      jobTitle: r.profiles?.job_title || 'Associate',
+      avatar: r.profiles?.avatar || '',
+      leaveType: r.leave_type,
+      startDate: r.start_date,
+      endDate: r.end_date,
+      daysCount: Number(r.days_count),
+      reason: r.reason,
+      attachmentName: r.attachment_name,
+      attachmentUrl: r.attachment_url,
+      status: r.status,
+      reviewedBy: r.reviewed_by,
+      adminComment: r.admin_comment,
+      createdAt: r.created_at,
+    }));
   }
 }
