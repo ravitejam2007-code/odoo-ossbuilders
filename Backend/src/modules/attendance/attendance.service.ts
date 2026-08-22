@@ -4,26 +4,72 @@ import { ErrorCodes } from '../../constants/errorCodes';
 import { AttendanceRecord, AttendanceSummary, WorkStatus } from '../../types';
 
 export class AttendanceService {
-  private getTodayDateString(): { dateStr: string; dayOfWeek: string; timeStr: string } {
+  private getTodayDateInfo(): { dateStr: string; dayOfWeek: string; time12: string; time24: string } {
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const dayOfWeek = days[now.getDay()];
-    const timeStr = now.toLocaleTimeString('en-US', {
+
+    const time12 = now.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
     });
-    return { dateStr, dayOfWeek, timeStr };
+
+    const hours24 = String(now.getHours()).padStart(2, '0');
+    const minutes24 = String(now.getMinutes()).padStart(2, '0');
+    const seconds24 = String(now.getSeconds()).padStart(2, '0');
+    const time24 = `${hours24}:${minutes24}:${seconds24}`;
+
+    return { dateStr, dayOfWeek, time12, time24 };
   }
 
   /**
-   * Daily Check-In
+   * Helper to calculate accurate work and extra hours
+   */
+  public calculateWorkHours(checkInStr: string, checkOutStr: string): { workHours: string; extraHours: string } {
+    try {
+      const parseMinutes = (str: string): number => {
+        const parts = str.trim().split(' ');
+        const [hStr, mStr] = parts[0].split(':');
+        let hours = parseInt(hStr, 10);
+        const minutes = parseInt(mStr || '0', 10);
+        const modifier = parts[1]?.toUpperCase();
+
+        if (modifier === 'PM' && hours < 12) hours += 12;
+        if (modifier === 'AM' && hours === 12) hours = 0;
+        return hours * 60 + minutes;
+      };
+
+      const inMins = parseMinutes(checkInStr);
+      const outMins = parseMinutes(checkOutStr);
+      let diff = outMins - inMins;
+      if (diff < 0) diff += 24 * 60; // Handle midnight crossover
+
+      const workH = Math.floor(diff / 60);
+      const workM = diff % 60;
+      const workHours = `${workH}h ${String(workM).padStart(2, '0')}m`;
+
+      const standardMinutes = 8 * 60; // 8 hours standard
+      const extraMins = Math.max(0, diff - standardMinutes);
+      const extraH = Math.floor(extraMins / 60);
+      const extraM = extraMins % 60;
+      const extraHours = `${extraH}h ${String(extraM).padStart(2, '0')}m`;
+
+      return { workHours, extraHours };
+    } catch {
+      return { workHours: '8h 00m', extraHours: '0h 00m' };
+    }
+  }
+
+  /**
+   * 1. POST /api/v1/attendance/check-in
+   * Sets check_in_time = now(), status = present
    */
   async checkIn(userId: string): Promise<{ record: AttendanceRecord; message: string }> {
-    const { dateStr, dayOfWeek, timeStr } = this.getTodayDateString();
+    const { dateStr, dayOfWeek, time12, time24 } = this.getTodayDateInfo();
 
-    // Check if record exists for today
+    // Check if user already checked in today
     const { data: existing } = await supabaseAdmin
       .from('attendance')
       .select('*')
@@ -44,7 +90,8 @@ export class AttendanceService {
       const { data, error } = await supabaseAdmin
         .from('attendance')
         .update({
-          check_in: timeStr,
+          check_in: time12,
+          check_in_time: time24,
           status: 'present',
           updated_at: new Date().toISOString(),
         })
@@ -61,7 +108,8 @@ export class AttendanceService {
           user_id: userId,
           date: dateStr,
           day_of_week: dayOfWeek,
-          check_in: timeStr,
+          check_in: time12,
+          check_in_time: time24,
           status: 'present',
         })
         .select()
@@ -71,7 +119,7 @@ export class AttendanceService {
       record = data;
     }
 
-    // Update profile work_status
+    // Update profile work_status = present
     await supabaseAdmin
       .from('profiles')
       .update({ work_status: 'present', updated_at: new Date().toISOString() })
@@ -89,15 +137,16 @@ export class AttendanceService {
         extraHours: record.extra_hours || '0h 0m',
         status: record.status,
       },
-      message: `Checked in successfully at ${timeStr}`,
+      message: `Checked in successfully at ${time12}`,
     };
   }
 
   /**
-   * Daily Check-Out
+   * 2. POST /api/v1/attendance/check-out
+   * Sets check_out_time = now(), computes work_hours & extra_hours
    */
   async checkOut(userId: string): Promise<{ record: AttendanceRecord; message: string }> {
-    const { dateStr, timeStr } = this.getTodayDateString();
+    const { dateStr, time12, time24 } = this.getTodayDateInfo();
 
     const { data: existing, error } = await supabaseAdmin
       .from('attendance')
@@ -114,14 +163,14 @@ export class AttendanceService {
       );
     }
 
-    // Simple duration calculation
-    const workHours = '8h 15m';
-    const extraHours = '0h 15m';
+    // Compute duration
+    const { workHours, extraHours } = this.calculateWorkHours(existing.check_in, time12);
 
     const { data: updated, error: updateErr } = await supabaseAdmin
       .from('attendance')
       .update({
-        check_out: timeStr,
+        check_out: time12,
+        check_out_time: time24,
         work_hours: workHours,
         extra_hours: extraHours,
         updated_at: new Date().toISOString(),
@@ -134,7 +183,7 @@ export class AttendanceService {
       throw new AppError(500, ErrorCodes.DATABASE_ERROR, 'Failed to record check-out');
     }
 
-    // Update profile work_status
+    // Update profile work_status = absent
     await supabaseAdmin
       .from('profiles')
       .update({ work_status: 'absent', updated_at: new Date().toISOString() })
@@ -152,19 +201,27 @@ export class AttendanceService {
         extraHours: updated.extra_hours,
         status: updated.status,
       },
-      message: `Checked out successfully at ${timeStr}`,
+      message: `Checked out successfully at ${time12} (Work time: ${workHours})`,
     };
   }
 
   /**
-   * Get Employee's Attendance history & summary
+   * 3. GET /api/v1/attendance/me
+   * Returns monthly/weekly records and summary (countPresent, countHalfDay, countLeave, totalWorkHours)
    */
-  async getMyAttendance(userId: string, _month?: string): Promise<{ records: AttendanceRecord[]; summary: AttendanceSummary }> {
-    const { data: records, error } = await supabaseAdmin
+  async getMyAttendance(userId: string, month?: string): Promise<{ records: AttendanceRecord[]; summary: AttendanceSummary }> {
+    let query = supabaseAdmin
       .from('attendance')
       .select('*')
       .eq('user_id', userId)
       .order('date', { ascending: false });
+
+    if (month) {
+      // Filter by YYYY-MM prefix e.g. "2026-08"
+      query = query.gte('date', `${month}-01`).lte('date', `${month}-31`);
+    }
+
+    const { data: records, error } = await query;
 
     if (error) {
       throw new AppError(500, ErrorCodes.DATABASE_ERROR, 'Failed to retrieve attendance logs');
@@ -176,17 +233,24 @@ export class AttendanceService {
       .eq('user_id', userId)
       .single();
 
-    const { dateStr } = this.getTodayDateString();
+    const { dateStr } = this.getTodayDateInfo();
     const todayRecord = records?.find((r) => r.date === dateStr);
 
     let countPresent = 0;
     let countHalfDay = 0;
     let countLeave = 0;
+    let totalMinutes = 0;
 
     const formattedRecords: AttendanceRecord[] = (records || []).map((r) => {
-      if (r.status === 'present') countPresent++;
-      else if (r.status === 'half_day') countHalfDay++;
-      else if (r.status === 'on_leave') countLeave++;
+      if (r.status === 'present') {
+        countPresent++;
+        totalMinutes += 8 * 60; // standard 8h base
+      } else if (r.status === 'half_day') {
+        countHalfDay++;
+        totalMinutes += 4 * 60;
+      } else if (r.status === 'on_leave') {
+        countLeave++;
+      }
 
       return {
         id: r.id,
@@ -201,13 +265,16 @@ export class AttendanceService {
       };
     });
 
+    const totalH = Math.floor(totalMinutes / 60);
+    const totalM = totalMinutes % 60;
+
     const summary: AttendanceSummary = {
       status: (profile?.work_status as WorkStatus) || 'present',
       checkInTime: todayRecord?.check_in || null,
       countPresent,
       countHalfDay,
       countLeave,
-      totalWorkHours: `${countPresent * 8}h 00m`,
+      totalWorkHours: `${totalH}h ${String(totalM).padStart(2, '0')}m`,
     };
 
     return {
@@ -217,23 +284,53 @@ export class AttendanceService {
   }
 
   /**
-   * Admin: Get all attendance logs with profile info
+   * 4. GET /api/v1/attendance (Admin)
+   * Query all employee records with date/month and department filters
    */
-  async getAllAttendance(dateFilter?: string) {
+  async getAllAttendance(filters: { date?: string; month?: string; department?: string }) {
     let query = supabaseAdmin
       .from('attendance')
-      .select('*, profiles:user_id(name, company, department, avatar, job_title)')
+      .select('*, profiles!inner(name, company, department, avatar, job_title, user_id)')
       .order('date', { ascending: false });
 
-    if (dateFilter) {
-      query = query.eq('date', dateFilter);
+    if (filters.date) {
+      query = query.eq('date', filters.date);
+    } else if (filters.month) {
+      query = query.gte('date', `${filters.month}-01`).lte('date', `${filters.month}-31`);
+    }
+
+    if (filters.department) {
+      query = query.eq('profiles.department', filters.department);
     }
 
     const { data, error } = await query;
     if (error) {
-      throw new AppError(500, ErrorCodes.DATABASE_ERROR, 'Failed to query all attendance records');
+      console.error('[Admin Attendance Query Error]:', error);
+      throw new AppError(500, ErrorCodes.DATABASE_ERROR, 'Failed to query attendance records');
     }
 
-    return data;
+    return (data || []).map((r: any) => ({
+      id: r.id,
+      userId: r.user_id,
+      employeeName: r.profiles?.name || 'Employee',
+      department: r.profiles?.department || 'General',
+      jobTitle: r.profiles?.job_title || 'Associate',
+      avatar: r.profiles?.avatar || '',
+      date: r.date,
+      dayOfWeek: r.day_of_week,
+      checkIn: r.check_in,
+      checkOut: r.check_out,
+      workHours: r.work_hours || '0h 0m',
+      extraHours: r.extra_hours || '0h 0m',
+      status: r.status,
+    }));
+  }
+
+  /**
+   * 5. GET /api/v1/attendance/:userId (Admin)
+   * Specific employee history & stats
+   */
+  async getEmployeeAttendanceById(userId: string, month?: string) {
+    return this.getMyAttendance(userId, month);
   }
 }

@@ -7,18 +7,25 @@ import { CheckInSchema, CheckOutSchema, QueryAttendanceSchema } from './attendan
 const router = Router();
 const attendanceController = new AttendanceController();
 
-// Employee Attendance Routes
+// 1. Employee Attendance Routes
 router.post('/check-in', requireAuth, validateRequest(CheckInSchema), attendanceController.checkIn);
 router.post('/check-out', requireAuth, validateRequest(CheckOutSchema), attendanceController.checkOut);
 router.get('/me', requireAuth, attendanceController.getMyAttendance);
 
-// Admin Attendance Routes
+// 2. Admin Attendance Routes
 router.get(
   '/',
   requireAuth,
   requireRole('admin', 'hr_officer'),
   validateRequest(QueryAttendanceSchema),
   attendanceController.getAllAttendance
+);
+
+router.get(
+  '/:userId',
+  requireAuth,
+  requireRole('admin', 'hr_officer'),
+  attendanceController.getEmployeeAttendanceById
 );
 
 export default router;

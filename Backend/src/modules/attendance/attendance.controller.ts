@@ -38,8 +38,23 @@ export class AttendanceController {
 
   async getAllAttendance(req: Request, res: Response, next: NextFunction) {
     try {
-      const { date } = req.query;
-      const result = await attendanceService.getAllAttendance(date as string);
+      const { date, month, department } = req.query;
+      const result = await attendanceService.getAllAttendance({
+        date: date as string,
+        month: month as string,
+        department: department as string,
+      });
+      return sendSuccess(res, result, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getEmployeeAttendanceById(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.params.userId as string;
+      const { month } = req.query;
+      const result = await attendanceService.getEmployeeAttendanceById(userId, month as string);
       return sendSuccess(res, result, 200);
     } catch (error) {
       next(error);
