@@ -24,7 +24,10 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, []);
 
   const login = async (emailOrId: string, password?: string) => {
-    const session = await apiClient.auth.login(emailOrId, password || 'Admin@1234');
+    const session = await apiClient.auth.login(emailOrId, password);
+    if (session?.user?.role !== 'admin' && session?.user?.role !== 'hr_officer') {
+      throw new Error('Access denied: Administrator or HR Officer privileges required.');
+    }
     setAdminUser(session.user as unknown as AdminEmployee);
   };
 

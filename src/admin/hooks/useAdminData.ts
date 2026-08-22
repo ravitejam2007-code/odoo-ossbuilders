@@ -25,9 +25,71 @@ export function useAdminEmployee(id?: string) {
     queryFn: async () => {
       if (!id) return undefined;
       const res = await apiClient.employees.getById(id);
-      return res;
+      return res?.employee || res;
     },
     enabled: !!id,
+  });
+}
+
+export function useCreateAdminEmployee() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      companyName?: string;
+      name: string;
+      email: string;
+      phone?: string;
+      password?: string;
+      role?: string;
+      department?: string;
+      jobTitle?: string;
+      wage?: number;
+    }) => {
+      // 1. Sign up the user account
+      const signupRes = await apiClient.auth.signup({
+        companyName: data.companyName || 'Odoo India',
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        password: data.password || 'Welcome@2026',
+        role: data.role || 'employee',
+      });
+
+      // 2. If additional details like job title / department / salary were provided, update the profile
+      if (signupRes?.userId && (data.department || data.jobTitle || data.wage)) {
+        try {
+          const wage = data.wage || 50000;
+          await apiClient.employees.update(signupRes.userId, {
+            department: data.department,
+            jobTitle: data.jobTitle,
+            salaryInfo: {
+              monthWage: wage,
+              yearlyWage: wage * 12,
+              basicSalary: wage * 0.5,
+              houseRentAllowance: wage * 0.25,
+              standardAllowance: 5000,
+              performanceBonus: 5000,
+              leaveTravelAllowance: 2500,
+              fixedAllowance: 0,
+              pfContributionEmployee: wage * 0.06,
+              pfContributionEmployer: wage * 0.06,
+              professionalTax: 200,
+              noOfWorkingDaysPerWeek: 5,
+              breakTimeHours: 1,
+            },
+          });
+        } catch (updateErr) {
+          console.warn('[Create Admin Employee Profile Update Warn]:', updateErr);
+        }
+      }
+
+      return signupRes;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-employees'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['colleagues'] });
+    },
   });
 }
 
@@ -36,10 +98,12 @@ export function useUpdateAdminEmployee() {
   return useMutation({
     mutationFn: async ({ id, ...data }: Partial<AdminEmployee> & { id: string }) => {
       const res = await apiClient.employees.update(id, data);
-      return res;
+      return res?.employee || res;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-employees'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-payroll'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-reports'] });
       if (data?.id) {
         queryClient.invalidateQueries({ queryKey: ['admin-employee', data.id] });
       }

@@ -122,13 +122,23 @@ export const AdminLeaveDetailView: React.FC<AdminLeaveDetailViewProps> = ({ id }
         </div>
 
         {/* Attachment */}
-        {request.attachmentName && (
+        {(request.attachmentName || request.attachmentUrl) && (
           <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9] flex items-center justify-between text-[13px]">
             <span className="font-semibold text-[#0a1317] flex items-center gap-1.5 font-mono">
               <FileText className="w-4 h-4 text-[#5d6c7b]" />
-              {request.attachmentName}
+              {request.attachmentName || 'Medical Certificate / Document'}
             </span>
-            <Button variant="secondary" size="sm" onClick={() => alert(`Opening certificate attachment: ${request.attachmentName}`)}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                if (request.attachmentUrl) {
+                  window.open(request.attachmentUrl, '_blank');
+                } else {
+                  alert(`Certificate attachment: ${request.attachmentName}`);
+                }
+              }}
+            >
               View Certificate
             </Button>
           </div>

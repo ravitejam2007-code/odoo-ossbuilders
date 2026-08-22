@@ -87,6 +87,7 @@ export interface AdminLeaveRequest {
   daysCount: number;
   status: LeaveStatus;
   attachmentName?: string;
+  attachmentUrl?: string;
   reason?: string;
   adminComment?: string;
   createdAt: string;

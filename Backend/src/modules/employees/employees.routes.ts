@@ -7,11 +7,11 @@ import { ListEmployeesSchema, UpdateEmployeeAdminSchema } from './employees.sche
 const router = Router();
 const employeesController = new EmployeesController();
 
-// Admin Employee Directory Routes
+// Admin & Employee Directory Routes
 router.get(
   '/',
   requireAuth,
-  requireRole('admin', 'hr_officer'),
+  requireRole('admin', 'hr_officer', 'employee'),
   validateRequest(ListEmployeesSchema),
   employeesController.listEmployees
 );

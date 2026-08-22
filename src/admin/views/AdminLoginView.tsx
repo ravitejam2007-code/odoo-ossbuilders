@@ -21,10 +21,10 @@ export const AdminLoginView: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      login(email.trim());
-      window.location.href = '/admin';
-    } catch {
-      setError('Invalid credentials. Contact your system administrator.');
+      await login(email.trim(), password);
+      window.location.href = '/admin/dashboard';
+    } catch (err: any) {
+      setError(err.message || 'Invalid credentials. Contact your system administrator.');
     } finally {
       setLoading(false);
     }

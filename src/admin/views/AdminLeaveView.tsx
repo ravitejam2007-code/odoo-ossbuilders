@@ -5,13 +5,19 @@ import { Button } from '../../shared/Button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../shared/Table';
 import { EmptyState } from '../../shared/EmptyState';
 import { Skeleton } from '../../shared/Loading';
-import { useAdminLeaveRequests } from '../hooks/useAdminData';
+import { useAdminLeaveRequests, useApproveLeave, useRejectLeave } from '../hooks/useAdminData';
 import { CheckCircle2, XCircle, AlertCircle, RefreshCw, Calendar, Search, Filter } from 'lucide-react';
 
 export const AdminLeaveView: React.FC = () => {
   const { data: requests, isLoading, isError, refetch } = useAdminLeaveRequests();
+  const approveMutation = useApproveLeave();
+  const rejectMutation = useRejectLeave();
+
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [search, setSearch] = useState('');
+  const [mutatingId, setMutatingId] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const list = requests || [];
   const filtered = list.filter((r) => {
@@ -27,8 +33,37 @@ export const AdminLeaveView: React.FC = () => {
     rejected: list.filter((r) => r.status === 'rejected').length,
   };
 
-  const handleApprove = (id: string) => console.log('Approve', id);
-  const handleReject = (id: string) => console.log('Reject', id);
+  const handleApprove = async (id: string) => {
+    setMutatingId(id);
+    setActionError(null);
+    try {
+      await approveMutation.mutateAsync({ id, comment: 'Approved by HR Administration' });
+      setActionSuccess('Leave application approved successfully!');
+      setTimeout(() => setActionSuccess(null), 4000);
+      await refetch();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to approve leave application.');
+      setTimeout(() => setActionError(null), 4000);
+    } finally {
+      setMutatingId(null);
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    setMutatingId(id);
+    setActionError(null);
+    try {
+      await rejectMutation.mutateAsync({ id, comment: 'Leave application rejected' });
+      setActionSuccess('Leave application rejected.');
+      setTimeout(() => setActionSuccess(null), 4000);
+      await refetch();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to reject leave application.');
+      setTimeout(() => setActionError(null), 4000);
+    } finally {
+      setMutatingId(null);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -78,6 +113,20 @@ export const AdminLeaveView: React.FC = () => {
           />
         </div>
       </div>
+
+      {actionSuccess && (
+        <div className="p-3.5 rounded-[12px] bg-[#e6f4ea] border border-[#31a24c]/30 text-[13px] text-[#1a7f3c] font-bold flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-[#31a24c] flex-shrink-0" />
+          <span>{actionSuccess}</span>
+        </div>
+      )}
+
+      {actionError && (
+        <div className="p-3.5 rounded-[12px] bg-[#fde8ec] border border-[#f0284a]/20 text-[13px] text-[#c0122e] font-bold flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-[#e41e3f] flex-shrink-0" />
+          <span>{actionError}</span>
+        </div>
+      )}
 
       <Card variant="feature" className="overflow-hidden">
         {isLoading && (
