@@ -67,7 +67,7 @@ dayflow/
 ### Prerequisites
 - Node.js 20+
 - pnpm (or npm/yarn — adjust commands below accordingly)
-- Docker (for local PostgreSQL)
+- Supabase Database for Local and Production Environment 
 
 ### Setup
 
