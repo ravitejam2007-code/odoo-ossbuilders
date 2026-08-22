@@ -1,0 +1,24 @@
+import { Router } from 'express';
+import { AttendanceController } from './attendance.controller';
+import { requireAuth, requireRole } from '../../middleware/auth';
+import { validateRequest } from '../../middleware/validate';
+import { CheckInSchema, CheckOutSchema, QueryAttendanceSchema } from './attendance.schema';
+
+const router = Router();
+const attendanceController = new AttendanceController();
+
+// Employee Attendance Routes
+router.post('/check-in', requireAuth, validateRequest(CheckInSchema), attendanceController.checkIn);
+router.post('/check-out', requireAuth, validateRequest(CheckOutSchema), attendanceController.checkOut);
+router.get('/me', requireAuth, attendanceController.getMyAttendance);
+
+// Admin Attendance Routes
+router.get(
+  '/',
+  requireAuth,
+  requireRole('admin', 'hr_officer'),
+  validateRequest(QueryAttendanceSchema),
+  attendanceController.getAllAttendance
+);
+
+export default router;

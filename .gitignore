@@ -1,12 +1,21 @@
 # Dependencies
 node_modules/
 Employee/node_modules/
+Backend/node_modules/
 
-# Production builds & Astro output
+# Production builds & output
 dist/
 Employee/dist/
+Backend/dist/
 .astro/
 Employee/.astro/
+
+# Environment variables & secrets (CRITICAL: Never commit .env)
+.env
+.env.local
+.env.*.local
+Backend/.env
+Employee/.env
 
 # IDE & OS files
 .vscode/

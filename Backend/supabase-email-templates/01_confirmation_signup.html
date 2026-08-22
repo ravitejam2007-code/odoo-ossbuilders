@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Confirm Your Dayflow Account</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f4f7; margin: 0; padding: 20px; }
+    .container { max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #ced0d4; overflow: hidden; }
+    .header { background: #0064e0; padding: 32px 24px; text-align: center; color: #ffffff; }
+    .header h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+    .header p { margin: 6px 0 0 0; font-size: 14px; opacity: 0.9; }
+    .content { padding: 32px 28px; color: #1c1e21; }
+    .greeting { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
+    .text { font-size: 15px; line-height: 1.6; color: #444950; margin-bottom: 24px; }
+    .cta-box { text-align: center; margin: 32px 0; }
+    .btn { background: #0064e0; color: #ffffff !important; padding: 14px 32px; border-radius: 100px; text-decoration: none; font-weight: 600; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(0, 100, 224, 0.25); }
+    .footer { background: #f1f4f7; padding: 20px 28px; font-size: 12px; color: #8595a4; text-align: center; border-top: 1px solid #dee3e9; }
+    .link-fallback { font-size: 12px; color: #5d6c7b; word-break: break-all; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Dayflow HRMS</h1>
+      <p>Every workday, perfectly aligned.</p>
+    </div>
+    <div class="content">
+      <div class="greeting">Welcome to Dayflow,</div>
+      <p class="text">
+        Your employee account has been created. Please confirm your email address to activate your account and access your personal dashboard, attendance logs, and leave management portal.
+      </p>
+
+      <div class="cta-box">
+        <a href="{{ .ConfirmationURL }}" class="btn">Confirm Email Address</a>
+      </div>
+
+      <p class="text" style="font-size: 13px; color: #5d6c7b; margin-top: 28px;">
+        If the button above does not work, copy and paste the following link directly into your browser:
+      </p>
+      <div class="link-fallback">
+        {{ .ConfirmationURL }}
+      </div>
+    </div>
+    <div class="footer">
+      &copy; 2026 Dayflow HRMS. All rights reserved.<br>
+      This email was delivered via custom Brevo SMTP.
+    </div>
+  </div>
+</body>
+</html>
