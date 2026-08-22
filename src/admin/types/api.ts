@@ -118,4 +118,8 @@ export interface AdminReportSummary {
   pendingLeaveRequests: number;
   monthlyPayrollBudget: number;
   departmentCounts: Record<string, number>;
+  avgAttendanceRate?: number;
+  totalPayrollMonthly?: number;
+  avgSalary?: number;
+  departmentBreakdown?: Record<string, number>;
 }

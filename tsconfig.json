@@ -14,5 +14,5 @@
       "@/*": ["src/*"]
     }
   },
-  "exclude": ["node_modules", "dist", ".astro"]
+  "exclude": ["node_modules", "dist", ".astro", "Backend"]
 }

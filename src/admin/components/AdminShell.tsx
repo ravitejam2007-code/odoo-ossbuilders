@@ -4,6 +4,7 @@ import { ProtectedAdminRoute } from './ProtectedAdminRoute';
 
 interface AdminShellProps {
   currentRoute?: string;
+  breadcrumbItems?: any;
   children: React.ReactNode;
 }
 

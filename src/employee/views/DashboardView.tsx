@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  useCurrentUser,
   useColleagues,
   useAttendanceHistory,
   useCheckInMutation,

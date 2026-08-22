@@ -27,7 +27,15 @@ export const AttendanceView: React.FC = () => {
   const checkOutMutation = useCheckOutMutation();
 
   const records = attendanceData?.records || [];
-  const summary = attendanceData?.summary;
+  const summary = attendanceData?.summary || {
+    countPresent: 0,
+    countLeave: 0,
+    countHalfDay: 0,
+    countAbsent: 0,
+    totalWorkHours: '0h 0m',
+    status: 'absent' as const,
+    checkInTime: undefined,
+  };
   const isCheckedIn =
     summary?.status === 'present' || authUser?.workStatus === 'present';
 

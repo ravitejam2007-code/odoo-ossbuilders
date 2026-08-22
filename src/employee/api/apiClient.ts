@@ -16,7 +16,7 @@ import type {
 } from '../types/api';
 
 const API_BASE_URL =
-  (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_API_BASE_URL) ||
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.PUBLIC_API_BASE_URL) ||
   (typeof window !== 'undefined' && (window as any).API_BASE_URL) ||
   '/api/v1';
 
