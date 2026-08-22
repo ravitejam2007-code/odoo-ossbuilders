@@ -41,10 +41,10 @@ Full requirements are in [`docs/PRD.md`](docs/PRD.md).
 |---|---|
 | Frontend | React 18 + TypeScript + Vite, Tailwind CSS, TanStack Query, Zustand |
 | Backend | Node.js + Express + TypeScript, Prisma ORM |
-| Database | PostgreSQL |
+| Database | PostgreSQL(Supabase) |
 | Auth | JWT (access + refresh tokens), bcrypt |
-| Email | Resend / AWS SES |
-| Hosting | Render or Railway (API), Vercel or Netlify (frontend) |
+| Email | Bervo Email Service and Nodemailer|
+| Hosting | Supabase (API), Vercel or Netlify (frontend) |
 | CI | GitHub Actions |
 
 Full architecture and rationale in [`docs/TRD.md`](docs/TRD.md).
