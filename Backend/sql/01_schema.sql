@@ -1,5 +1,5 @@
 -- =============================================================================
--- Dayflow HRMS PostgreSQL / Supabase Schema
+-- Dayflow HRMS PostgreSQL / Supabase Schema (Phase 0)
 -- =============================================================================
 
 -- Enable UUID extension
@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,
     role VARCHAR(50) NOT NULL DEFAULT 'employee', -- 'employee' | 'admin' | 'hr_officer'
     email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    company_name VARCHAR(100) DEFAULT 'Dayflow',
     verification_token VARCHAR(255),
     reset_token VARCHAR(255),
     reset_token_expires TIMESTAMPTZ,
@@ -29,16 +30,19 @@ CREATE TABLE IF NOT EXISTS profiles (
     company VARCHAR(100) DEFAULT 'Dayflow',
     department VARCHAR(100) DEFAULT 'Engineering',
     job_title VARCHAR(100) DEFAULT 'Associate Engineer',
+    manager_id UUID REFERENCES users(id) ON DELETE SET NULL,
     manager VARCHAR(255) DEFAULT 'System Admin',
     avatar TEXT DEFAULT '',
+    avatar_url TEXT DEFAULT '',
     work_status VARCHAR(50) NOT NULL DEFAULT 'present', -- 'present' | 'absent' | 'half_day' | 'on_leave'
+    date_joined DATE DEFAULT CURRENT_DATE,
     joined_year INT DEFAULT 2026,
     serial_no VARCHAR(50) DEFAULT '0001',
     about TEXT DEFAULT '',
     what_i_love_about_job TEXT DEFAULT '',
-    skills TEXT[] DEFAULT ARRAY[]::TEXT[],
-    certifications TEXT[] DEFAULT ARRAY[]::TEXT[],
-    interests TEXT[] DEFAULT ARRAY[]::TEXT[],
+    skills JSONB DEFAULT '["React", "TypeScript", "Node.js"]'::JSONB,
+    certifications JSONB DEFAULT '[]'::JSONB,
+    interests JSONB DEFAULT '[]'::JSONB,
     dob VARCHAR(50) DEFAULT '',
     residing_address TEXT DEFAULT '',
     nationality VARCHAR(100) DEFAULT 'Indian',
@@ -78,6 +82,8 @@ CREATE TABLE IF NOT EXISTS attendance (
     day_of_week VARCHAR(20) NOT NULL, -- 'Mon', 'Tue', etc.
     check_in VARCHAR(20), -- '09:00 AM'
     check_out VARCHAR(20), -- '06:00 PM'
+    check_in_time TIME,
+    check_out_time TIME,
     work_hours VARCHAR(20) DEFAULT '0h 0m',
     extra_hours VARCHAR(20) DEFAULT '0h 0m',
     status VARCHAR(50) NOT NULL DEFAULT 'present', -- 'present' | 'absent' | 'half_day' | 'on_leave'
@@ -89,9 +95,9 @@ CREATE TABLE IF NOT EXISTS attendance (
 -- 4. Leave Balances Table (Paid, Sick, Unpaid Quotas)
 CREATE TABLE IF NOT EXISTS leave_balances (
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    paid_days_available NUMERIC(5, 1) NOT NULL DEFAULT 24.0,
-    sick_days_available NUMERIC(5, 1) NOT NULL DEFAULT 7.0,
-    unpaid_days_taken NUMERIC(5, 1) NOT NULL DEFAULT 0.0,
+    paid_days_available INT NOT NULL DEFAULT 24,
+    sick_days_available INT NOT NULL DEFAULT 7,
+    unpaid_days_taken INT NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -126,10 +132,13 @@ CREATE TABLE IF NOT EXISTS salary_structures (
     performance_bonus NUMERIC(12, 2) NOT NULL DEFAULT 0,
     leave_travel_allowance NUMERIC(12, 2) NOT NULL DEFAULT 0,
     fixed_allowance NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    pf_employee NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    pf_employer NUMERIC(12, 2) NOT NULL DEFAULT 0,
     pf_contribution_employee NUMERIC(12, 2) NOT NULL DEFAULT 0,
     pf_contribution_employer NUMERIC(12, 2) NOT NULL DEFAULT 0,
     professional_tax NUMERIC(12, 2) NOT NULL DEFAULT 0,
     no_of_working_days_per_week INT NOT NULL DEFAULT 5,
+    effective_from DATE NOT NULL DEFAULT CURRENT_DATE,
     updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -165,13 +174,14 @@ CREATE TABLE IF NOT EXISTS notifications (
 CREATE TABLE IF NOT EXISTS documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     file_name VARCHAR(255) NOT NULL,
     file_type VARCHAR(100) NOT NULL,
     file_url TEXT NOT NULL,
     uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Performance Indexes
+-- 10. Database Indexes (Per Phase 0 Specification)
 CREATE INDEX IF NOT EXISTS idx_users_login_id ON users(login_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
