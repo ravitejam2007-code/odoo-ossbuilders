@@ -1,61 +1,44 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { AdminEmployee, UserRole } from '../types/api';
+import { getStoredSession, clearAuthSession, getAuthToken, apiClient } from '../../employee/api/apiClient';
 
 export interface AdminAuthContextType {
   adminUser: AdminEmployee | null;
   role: UserRole | null;
   isAuthenticated: boolean;
   isAdminOrHr: boolean;
-  login: (emailOrId: string) => void;
+  login: (emailOrId: string, password?: string) => Promise<void>;
   logout: () => void;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
 
-export const DEFAULT_ADMIN_USER: AdminEmployee = {
-  id: 'emp-101',
-  loginId: 'OIJODO20220001',
-  name: 'Sarah Jenkins',
-  email: 'sarah.jenkins@odoo.com',
-  phone: '+91 98765 43210',
-  company: 'Odoo India',
-  department: 'Human Resources',
-  jobTitle: 'HR Director / Admin',
-  manager: 'Executive Board',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-  role: 'admin',
-  workStatus: 'present',
-  joinedYear: 2020,
-  serialNo: '0001',
-};
-
 export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [adminUser, setAdminUser] = useState<AdminEmployee | null>(DEFAULT_ADMIN_USER);
+  const [adminUser, setAdminUser] = useState<AdminEmployee | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('dayflow_admin_user');
-    if (saved) {
-      try {
-        setAdminUser(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse admin user session');
-      }
+    const session = getStoredSession();
+    if (session?.user) {
+      setAdminUser(session.user as unknown as AdminEmployee);
     }
   }, []);
 
-  const login = (emailOrId: string) => {
-    const user = { ...DEFAULT_ADMIN_USER, email: emailOrId };
-    setAdminUser(user);
-    localStorage.setItem('dayflow_admin_user', JSON.stringify(user));
+  const login = async (emailOrId: string, password?: string) => {
+    const session = await apiClient.auth.login(emailOrId, password || 'Admin@1234');
+    setAdminUser(session.user as unknown as AdminEmployee);
   };
 
   const logout = () => {
+    apiClient.auth.logout().catch(() => {});
+    clearAuthSession();
     setAdminUser(null);
-    localStorage.removeItem('dayflow_admin_user');
+    if (typeof window !== 'undefined') {
+      window.location.href = '/admin/login';
+    }
   };
 
-  const role = adminUser?.role || null;
-  const isAuthenticated = !!adminUser;
+  const role = (adminUser?.role as UserRole) || null;
+  const isAuthenticated = !!adminUser && !!getAuthToken();
   const isAdminOrHr = role === 'admin' || role === 'hr_officer';
 
   return (

@@ -1,10 +1,20 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLeaveBalance, useSubmitLeaveRequest, useUploadLeaveAttachment } from '../hooks/useEmployeeData';
 import { Button } from '../../shared/Button';
 import { Card } from '../../shared/Card';
 import { FormField, Input, Textarea, Select } from '../../shared/FormField';
 import { Breadcrumbs } from '../../shared/Breadcrumbs';
-import { Upload, FileText, ChevronLeft, AlertCircle, CheckCircle, User, Calendar, Paperclip } from 'lucide-react';
+import {
+  Upload,
+  FileText,
+  ChevronLeft,
+  AlertCircle,
+  CheckCircle,
+  Calendar,
+  Paperclip,
+  X,
+} from 'lucide-react';
 
 interface FormState {
   leaveType: string;
@@ -19,12 +29,19 @@ interface FormErrors {
   startDate?: string;
   endDate?: string;
   reason?: string;
+  general?: string;
 }
 
 export const LeaveNewView: React.FC = () => {
   const { currentUser } = useAuth();
+  const { data: leaveBalance } = useLeaveBalance();
+  const submitLeaveMutation = useSubmitLeaveRequest();
+  const uploadAttachmentMutation = useUploadLeaveAttachment();
+
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [uploadedAttachment, setUploadedAttachment] = useState<{ name: string; url: string } | null>(null);
+
   const [form, setForm] = useState<FormState>({
     leaveType: 'Paid Time Off',
     startDate: '',
@@ -32,6 +49,7 @@ export const LeaveNewView: React.FC = () => {
     reason: '',
     document: null,
   });
+
   const [errors, setErrors] = useState<FormErrors>({});
 
   const today = new Date().toISOString().split('T')[0];
@@ -40,7 +58,40 @@ export const LeaveNewView: React.FC = () => {
     if (!form.startDate || !form.endDate) return 0;
     const a = new Date(form.startDate);
     const b = new Date(form.endDate);
-    return Math.max(0, Math.round((b.getTime() - a.getTime()) / 86400000) + 1);
+    if (b < a) return 0;
+    
+    // Count weekdays
+    let count = 0;
+    const cur = new Date(a);
+    while (cur <= b) {
+      const day = cur.getDay();
+      if (day !== 0 && day !== 6) {
+        count++;
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+    return count > 0 ? count : 1;
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setErrors((prev) => ({ ...prev, general: 'File size must be under 10MB.' }));
+      return;
+    }
+
+    setForm((prev) => ({ ...prev, document: file }));
+    try {
+      const res = await uploadAttachmentMutation.mutateAsync(file);
+      setUploadedAttachment({
+        name: res.attachmentName,
+        url: res.attachmentUrl,
+      });
+    } catch {
+      // Keep local file reference as fallback
+    }
   };
 
   const validate = (): boolean => {
@@ -48,9 +99,10 @@ export const LeaveNewView: React.FC = () => {
     if (!form.leaveType) e.leaveType = 'Please select a leave type.';
     if (!form.startDate) e.startDate = 'Start date is required.';
     if (!form.endDate) e.endDate = 'End date is required.';
-    if (form.startDate && form.endDate && form.endDate < form.startDate)
+    if (form.startDate && form.endDate && form.endDate < form.startDate) {
       e.endDate = 'End date must be on or after start date.';
-    if (!form.reason.trim()) e.reason = 'Please provide remarks / reason.';
+    }
+    if (!form.reason.trim()) e.reason = 'Please provide remarks / reason for your request.';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -58,33 +110,77 @@ export const LeaveNewView: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setSubmitting(false);
-    setSubmitted(true);
+    setErrors({});
+
+    try {
+      let attachmentName = uploadedAttachment?.name;
+      let attachmentUrl = uploadedAttachment?.url;
+
+      // If document was selected but upload hasn't run yet
+      if (form.document && !attachmentUrl) {
+        try {
+          const uploadRes = await uploadAttachmentMutation.mutateAsync(form.document);
+          attachmentName = uploadRes.attachmentName;
+          attachmentUrl = uploadRes.attachmentUrl;
+        } catch {
+          // Proceed if upload fails
+        }
+      }
+
+      await submitLeaveMutation.mutateAsync({
+        leaveType: form.leaveType,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        daysCount: calcDays(),
+        reason: form.reason.trim(),
+        attachmentName,
+        attachmentUrl,
+      });
+
+      setSubmitted(true);
+    } catch (err: any) {
+      const code = err.code || '';
+      if (code === 'INSUFFICIENT_LEAVE_BALANCE') {
+        setErrors({ general: 'Insufficient leave balance quota for the requested days.' });
+      } else if (code === 'INVALID_DATE_RANGE') {
+        setErrors({ endDate: 'End date cannot be earlier than start date.' });
+      } else {
+        setErrors({ general: err.message || 'Failed to submit leave request. Please try again.' });
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-5 text-center px-4">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-5 text-center px-4 font-sans">
         <div className="w-16 h-16 rounded-full bg-[#e6f4ea] flex items-center justify-center">
           <CheckCircle className="w-8 h-8 text-[#31a24c]" />
         </div>
-        <h2 className="font-heading text-[24px] font-[600] uppercase tracking-[0.02em] text-[#0a1317]">
+        <h2 className="text-[24px] font-semibold tracking-tight text-[#0a1317]">
           Time Off Request Submitted
         </h2>
-        <p className="text-[15px] text-[#5d6c7b] max-w-sm">
-          Your <strong className="text-[#0a1317]">{form.leaveType}</strong> application for <strong className="text-[#0a1317]">{calcDays().toFixed(2)} Days</strong> has been recorded and submitted for HR approval.
+        <p className="text-[15px] text-[#5d6c7b] max-w-md">
+          Your <strong className="text-[#0a1317]">{form.leaveType}</strong> application for{' '}
+          <strong className="text-[#0a1317]">{calcDays()} Workdays</strong> ({form.startDate} to {form.endDate}) has been submitted for HR review.
         </p>
         <div className="flex gap-3 pt-2">
-          <Button variant="primary" size="md" onClick={() => window.location.href = '/leave'}>
-            View Leave Requests
+          <Button variant="primary" size="md" onClick={() => (window.location.href = '/leave')}>
+            View Leave History
           </Button>
-          <Button variant="ghost" size="md" onClick={() => {
-            setSubmitted(false);
-            setForm({ leaveType: 'Paid Time Off', startDate: '', endDate: '', reason: '', document: null });
-          }}>
-            Submit Another Request
+          <Button
+            variant="ghost"
+            size="md"
+            onClick={() => {
+              setSubmitted(false);
+              setForm({ leaveType: 'Paid Time Off', startDate: '', endDate: '', reason: '', document: null });
+              setUploadedAttachment(null);
+            }}
+          >
+            Apply Another Leave
           </Button>
         </div>
       </div>
@@ -92,27 +188,35 @@ export const LeaveNewView: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-[720px] mx-auto">
-      <Breadcrumbs items={[
-        { label: 'Time Off', href: '/leave' },
-        { label: 'New Request' },
-      ]} />
+    <div className="space-y-6 max-w-[720px] mx-auto font-sans">
+      <Breadcrumbs
+        items={[
+          { label: 'Time Off', href: '/leave' },
+          { label: 'New Request' },
+        ]}
+      />
 
       {/* ── Page Header ────────────────────────────────────────────── */}
       <div>
-        <h1 className="font-heading text-[32px] sm:text-[40px] font-[600] uppercase tracking-[0.02em] leading-[1.15] text-[#0a1317]">
-          New Time Off Request
+        <h1 className="text-[28px] sm:text-[34px] font-semibold tracking-tight leading-tight text-[#0a1317]">
+          Apply for Time Off
         </h1>
-        <p className="text-[15px] font-normal text-[#5d6c7b] mt-1">
-          Complete the allocation details below for administrative review
+        <p className="text-[14px] text-[#5d6c7b] mt-1">
+          Complete the allocation details below for administrative review and quota tracking
         </p>
       </div>
+
+      {errors.general && (
+        <div className="p-3.5 rounded-[12px] bg-[#fde8ec] border border-[#f0284a]/20 text-[13px] text-[#c0122e] font-bold flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-[#e41e3f] flex-shrink-0" />
+          <span>{errors.general}</span>
+        </div>
+      )}
 
       {/* ── Form Card ──────────────────────────────────────────────── */}
       <Card variant="feature" className="p-6">
         <form onSubmit={handleSubmit} noValidate className="space-y-5">
-          
-          {/* Employee Field (Read-only as per wireframe) */}
+          {/* Employee Field */}
           <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9] flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-[#0a1317] text-white flex items-center justify-center font-bold text-[13px]">
@@ -128,7 +232,7 @@ export const LeaveNewView: React.FC = () => {
             </span>
           </div>
 
-          {/* Time Off Type (Wireframe: Paid Time Off, Sick Leave, Unpaid Leave) */}
+          {/* Time Off Type */}
           <FormField label="Time Off Type" required error={errors.leaveType}>
             <Select
               value={form.leaveType}
@@ -138,9 +242,15 @@ export const LeaveNewView: React.FC = () => {
               }}
               hasError={!!errors.leaveType}
             >
-              <option value="Paid Time Off">Paid Time Off (24 Days Available)</option>
-              <option value="Sick Leave">Sick Leave (07 Days Available)</option>
-              <option value="Unpaid Leave">Unpaid Leave (Reduces Payable Days)</option>
+              <option value="Paid Time Off">
+                Paid Time Off ({leaveBalance?.paidTimeOffDays ?? 24} Days Available)
+              </option>
+              <option value="Sick Leave">
+                Sick Leave ({leaveBalance?.sickLeaveDays ?? 7} Days Available)
+              </option>
+              <option value="Unpaid Leaves">
+                Unpaid Leaves (Reduces Payable Workdays)
+              </option>
             </Select>
           </FormField>
 
@@ -173,14 +283,14 @@ export const LeaveNewView: React.FC = () => {
             </FormField>
           </div>
 
-          {/* Allocation Computation */}
+          {/* Computed Duration */}
           <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-[#0064e0]" />
               <span className="text-[13px] font-bold text-[#0a1317]">Allocation Duration:</span>
             </div>
             <span className="font-mono text-[15px] font-bold text-[#0a1317]">
-              {calcDays().toFixed(2)} Days
+              {calcDays()} Workdays
             </span>
           </div>
 
@@ -198,8 +308,8 @@ export const LeaveNewView: React.FC = () => {
             />
           </FormField>
 
-          {/* Attachment Upload (Certificate support per wireframe) */}
-          <FormField label="Supporting Document / Medical Certificate">
+          {/* Attachment Upload */}
+          <FormField label="Supporting Document / Medical Note (Optional)">
             <label
               className={[
                 'flex flex-col items-center justify-center gap-2',
@@ -214,37 +324,42 @@ export const LeaveNewView: React.FC = () => {
                 type="file"
                 className="sr-only"
                 accept=".pdf,.jpg,.jpeg,.png"
-                onChange={(e) => setForm({ ...form, document: e.target.files?.[0] || null })}
+                onChange={handleFileChange}
               />
               {form.document ? (
-                <>
+                <div className="flex flex-col items-center">
                   <FileText className="w-6 h-6 text-[#0064e0]" />
-                  <span className="text-[13px] font-bold text-[#0064e0]">{form.document.name}</span>
+                  <span className="text-[13px] font-bold text-[#0064e0] mt-1">{form.document.name}</span>
                   <span className="text-[11px] text-[#8595a4]">
-                    {(form.document.size / 1024).toFixed(0)} KB &bull; Click to replace
+                    {(form.document.size / 1024).toFixed(0)} KB &bull; {uploadAttachmentMutation.isPending ? 'Uploading to storage...' : 'Ready &bull; Click to replace'}
                   </span>
-                </>
+                </div>
               ) : (
                 <>
                   <Paperclip className="w-5 h-5 text-[#8595a4]" />
-                  <span className="text-[13px] font-bold text-[#0a1317]">Upload Certificate / Document</span>
-                  <span className="text-[11px] text-[#8595a4]">PDF, JPG or PNG (Optional for paid leave, recommended for sick leave)</span>
+                  <span className="text-[13px] font-bold text-[#0a1317]">Upload Document / Certificate</span>
+                  <span className="text-[11px] text-[#8595a4]">PDF, JPG, or PNG (Max 10MB)</span>
                 </>
               )}
             </label>
           </FormField>
 
-          {/* Submit & Discard Actions (Wireframe Rule 67 & 68) */}
+          {/* Submit & Discard Actions */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#dee3e9]">
             <Button
               type="button"
               variant="ghost"
               size="md"
-              onClick={() => window.location.href = '/leave'}
+              onClick={() => (window.location.href = '/leave')}
             >
               Discard
             </Button>
-            <Button type="submit" variant="buy-cta" size="md" loading={submitting}>
+            <Button
+              type="submit"
+              variant="buy-cta"
+              size="md"
+              loading={submitting || uploadAttachmentMutation.isPending}
+            >
               Submit Request
             </Button>
           </div>

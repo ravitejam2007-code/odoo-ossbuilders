@@ -1,49 +1,61 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useCurrentUser, useUpdateProfileMutation } from '../hooks/useEmployeeData';
 import { Card } from '../../shared/Card';
 import { Button } from '../../shared/Button';
-import { FormField, Input, Textarea } from '../../shared/FormField';
-import { ArrowLeft, CheckCircle2, Lock, User, AlertCircle, Sparkles } from 'lucide-react';
+import { FormField, Input, Textarea, Select } from '../../shared/FormField';
+import { ArrowLeft, CheckCircle2, Lock, AlertCircle } from 'lucide-react';
 
 export const ProfileEditView: React.FC = () => {
-  const { currentUser, updateCurrentUserProfile } = useAuth();
+  const { currentUser: authUser } = useAuth();
+  const { data: profileUser } = useCurrentUser();
+  const updateProfileMutation = useUpdateProfileMutation();
 
-  const [name, setName] = useState(currentUser?.name || '');
+  const currentUser = profileUser || authUser;
+
   const [phone, setPhone] = useState(currentUser?.phone || '');
   const [residingAddress, setResidingAddress] = useState(currentUser?.residingAddress || '');
   const [avatar, setAvatar] = useState(currentUser?.avatar || '');
   const [about, setAbout] = useState(currentUser?.about || '');
-  const [interests, setInterests] = useState(currentUser?.interests?.join(', ') || 'Open Source, UI Design, Problem Solving');
-  const [whatILove, setWhatILove] = useState(currentUser?.whatILoveAboutJob || 'Collaborating with team members to solve complex challenges.');
+  const [interests, setInterests] = useState(currentUser?.interests?.join(', ') || '');
+  const [whatILove, setWhatILove] = useState(currentUser?.whatILoveAboutJob || '');
+  const [dob, setDob] = useState(currentUser?.dob || '');
+  const [nationality, setNationality] = useState(currentUser?.nationality || 'Indian');
+  const [gender, setGender] = useState(currentUser?.gender || 'Male');
+  const [maritalStatus, setMaritalStatus] = useState(currentUser?.maritalStatus || 'Single');
+
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   if (!currentUser) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setErrorMsg('Full Name is required.');
-      return;
-    }
-
     setErrorMsg('');
-    updateCurrentUserProfile({
-      name: name.trim(),
-      phone: phone.trim(),
-      residingAddress: residingAddress.trim(),
-      avatar: avatar.trim() || currentUser.avatar,
-      about: about.trim(),
-      whatILoveAboutJob: whatILove.trim(),
-      interests: interests.split(',').map((s) => s.trim()).filter(Boolean),
-    });
 
-    setSuccess(true);
-    setTimeout(() => {
-      if (typeof window !== 'undefined') {
-        window.location.href = '/profile';
-      }
-    }, 800);
+    try {
+      await updateProfileMutation.mutateAsync({
+        phone: phone.trim(),
+        avatar: avatar.trim() || currentUser.avatar,
+        residingAddress: residingAddress.trim(),
+        about: about.trim(),
+        whatILoveAboutJob: whatILove.trim(),
+        interests: interests.split(',').map((s) => s.trim()).filter(Boolean),
+        dob: dob || undefined,
+        nationality: nationality.trim(),
+        gender: gender.trim(),
+        maritalStatus: maritalStatus.trim(),
+      });
+
+      setSuccess(true);
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          window.location.href = '/profile';
+        }
+      }, 1000);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to update profile. Please check your entries.');
+    }
   };
 
   return (
@@ -88,6 +100,10 @@ export const ProfileEditView: React.FC = () => {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[12px]">
             <div>
+              <span className="text-[#8595a4] block">Full Name:</span>
+              <span className="font-bold text-[#0a1317]">{currentUser.name}</span>
+            </div>
+            <div>
               <span className="text-[#8595a4] block">Login ID:</span>
               <span className="font-mono font-bold text-[#0a1317]">{currentUser.loginId}</span>
             </div>
@@ -107,25 +123,11 @@ export const ProfileEditView: React.FC = () => {
               <span className="text-[#8595a4] block">Company:</span>
               <span className="font-medium text-[#0a1317]">{currentUser.company}</span>
             </div>
-            <div>
-              <span className="text-[#8595a4] block">Manager:</span>
-              <span className="font-medium text-[#0a1317]">{currentUser.manager || 'Sarah Jenkins'}</span>
-            </div>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label="Full Name" required>
-              <Input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter full name"
-                required
-              />
-            </FormField>
-
             <FormField label="Phone Contact">
               <Input
                 type="tel"
@@ -134,16 +136,43 @@ export const ProfileEditView: React.FC = () => {
                 placeholder="+91 98765 43210"
               />
             </FormField>
+
+            <FormField label="Avatar Image URL">
+              <Input
+                type="url"
+                value={avatar}
+                onChange={(e) => setAvatar(e.target.value)}
+                placeholder="https://images.unsplash.com/..."
+              />
+            </FormField>
           </div>
 
-          <FormField label="Avatar Image URL">
-            <Input
-              type="url"
-              value={avatar}
-              onChange={(e) => setAvatar(e.target.value)}
-              placeholder="https://images.unsplash.com/..."
-            />
-          </FormField>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <FormField label="Date of Birth">
+              <Input
+                type="date"
+                value={dob}
+                onChange={(e) => setDob(e.target.value)}
+              />
+            </FormField>
+
+            <FormField label="Nationality">
+              <Input
+                type="text"
+                value={nationality}
+                onChange={(e) => setNationality(e.target.value)}
+                placeholder="Indian"
+              />
+            </FormField>
+
+            <FormField label="Gender">
+              <Select value={gender} onChange={(e) => setGender(e.target.value)}>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </Select>
+            </FormField>
+          </div>
 
           <FormField label="Residing Address">
             <Input
@@ -187,7 +216,7 @@ export const ProfileEditView: React.FC = () => {
                 Cancel
               </Button>
             </a>
-            <Button variant="primary" size="md" type="submit">
+            <Button variant="primary" size="md" type="submit" loading={updateProfileMutation.isPending}>
               Save Changes
             </Button>
           </div>

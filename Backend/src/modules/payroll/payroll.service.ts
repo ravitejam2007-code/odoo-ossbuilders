@@ -39,7 +39,7 @@ export class PayrollService {
   async getAllPayroll() {
     const { data, error } = await supabaseAdmin
       .from('profiles')
-      .select('user_id, name, company, department, job_title, salary_info, bank_details, users!inner(login_id, email, role)');
+      .select('user_id, name, company, department, job_title, salary_info, bank_details, users!profiles_user_id_fkey(login_id, email, role)');
 
     if (error) {
       console.error('[Get All Payroll Error]:', error);

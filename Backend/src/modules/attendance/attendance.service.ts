@@ -69,7 +69,7 @@ export class AttendanceService {
   async checkIn(userId: string): Promise<{ record: AttendanceRecord; message: string }> {
     const { dateStr, dayOfWeek, time12, time24 } = this.getTodayDateInfo();
 
-    // Check if user already checked in today
+    // Check if user already has a record today
     const { data: existing } = await supabaseAdmin
       .from('attendance')
       .select('*')
@@ -77,21 +77,39 @@ export class AttendanceService {
       .eq('date', dateStr)
       .single();
 
-    if (existing && existing.check_in) {
-      throw new AppError(
-        400,
-        ErrorCodes.ALREADY_CHECKED_IN,
-        `Already checked in today at ${existing.check_in}`
-      );
-    }
-
     let record: any;
     if (existing) {
+      // If already checked in and hasn't checked out yet, return existing record
+      if (existing.check_in && !existing.check_out) {
+        await supabaseAdmin
+          .from('profiles')
+          .update({ work_status: 'present', updated_at: new Date().toISOString() })
+          .eq('user_id', userId);
+
+        return {
+          record: {
+            id: existing.id,
+            userId: existing.user_id,
+            date: existing.date,
+            dayOfWeek: existing.day_of_week,
+            checkIn: existing.check_in,
+            checkOut: existing.check_out,
+            workHours: existing.work_hours || '0h 0m',
+            extraHours: existing.extra_hours || '0h 0m',
+            status: 'present',
+          },
+          message: `Already active session from ${existing.check_in}`,
+        };
+      }
+
+      // If re-checking in after checking out, start new/updated session
       const { data, error } = await supabaseAdmin
         .from('attendance')
         .update({
           check_in: time12,
           check_in_time: time24,
+          check_out: null,
+          check_out_time: null,
           status: 'present',
           updated_at: new Date().toISOString(),
         })
@@ -146,41 +164,61 @@ export class AttendanceService {
    * Sets check_out_time = now(), computes work_hours & extra_hours
    */
   async checkOut(userId: string): Promise<{ record: AttendanceRecord; message: string }> {
-    const { dateStr, time12, time24 } = this.getTodayDateInfo();
+    const { dateStr, dayOfWeek, time12, time24 } = this.getTodayDateInfo();
 
-    const { data: existing, error } = await supabaseAdmin
+    const { data: existing } = await supabaseAdmin
       .from('attendance')
       .select('*')
       .eq('user_id', userId)
       .eq('date', dateStr)
       .single();
 
-    if (error || !existing || !existing.check_in) {
-      throw new AppError(
-        400,
-        ErrorCodes.NOT_CHECKED_IN,
-        'Cannot check out without an active check-in record for today'
-      );
-    }
+    const checkInVal = existing?.check_in || '09:00 AM';
+    const { workHours, extraHours } = this.calculateWorkHours(checkInVal, time12);
 
-    // Compute duration
-    const { workHours, extraHours } = this.calculateWorkHours(existing.check_in, time12);
+    let updated: any;
+    if (existing) {
+      const { data, error: updateErr } = await supabaseAdmin
+        .from('attendance')
+        .update({
+          check_in: checkInVal,
+          check_out: time12,
+          check_out_time: time24,
+          work_hours: workHours,
+          extra_hours: extraHours,
+          status: 'present',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
 
-    const { data: updated, error: updateErr } = await supabaseAdmin
-      .from('attendance')
-      .update({
-        check_out: time12,
-        check_out_time: time24,
-        work_hours: workHours,
-        extra_hours: extraHours,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', existing.id)
-      .select()
-      .single();
+      if (updateErr) {
+        throw new AppError(500, ErrorCodes.DATABASE_ERROR, 'Failed to record check-out');
+      }
+      updated = data;
+    } else {
+      const { data, error: insertErr } = await supabaseAdmin
+        .from('attendance')
+        .insert({
+          user_id: userId,
+          date: dateStr,
+          day_of_week: dayOfWeek,
+          check_in: checkInVal,
+          check_in_time: '09:00:00',
+          check_out: time12,
+          check_out_time: time24,
+          work_hours: workHours,
+          extra_hours: extraHours,
+          status: 'present',
+        })
+        .select()
+        .single();
 
-    if (updateErr) {
-      throw new AppError(500, ErrorCodes.DATABASE_ERROR, 'Failed to record check-out');
+      if (insertErr) {
+        throw new AppError(500, ErrorCodes.DATABASE_ERROR, 'Failed to record check-out');
+      }
+      updated = data;
     }
 
     // Update profile work_status = absent

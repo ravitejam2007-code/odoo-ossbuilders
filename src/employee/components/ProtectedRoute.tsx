@@ -3,13 +3,23 @@ import { useAuth } from '../context/AuthContext';
 import { Card } from '../../shared/Card';
 import { Button } from '../../shared/Button';
 import { Lock } from 'lucide-react';
+import { LoadingSpinner } from '../../shared/Loading';
 
 export interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center p-4 gap-3">
+        <LoadingSpinner size="md" />
+        <p className="text-xs text-[#5d6c7b]">Authenticating session...</p>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -20,11 +30,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
           </div>
           <h2 className="text-xl font-bold text-zinc-950 tracking-tight">Authentication Required</h2>
           <p className="text-xs text-zinc-500">
-            Please log in with your employee credentials to access your portal.
+            Please log in with your employee credentials to access your Dayflow portal.
           </p>
           <a href="/login">
             <Button variant="primary" size="md" className="w-full mt-2">
-              Go to Employee Sign In
+              Go to Sign In
             </Button>
           </a>
         </Card>

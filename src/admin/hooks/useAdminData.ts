@@ -1,12 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  getAdminEmployees,
-  INITIAL_ADMIN_EMPLOYEES,
-  INITIAL_ADMIN_ATTENDANCE,
-  INITIAL_ADMIN_LEAVE_REQUESTS,
-  INITIAL_ADMIN_PAYROLL,
-  INITIAL_ADMIN_REPORT_SUMMARY,
-} from '../api/mockData';
+import { apiClient } from '../../employee/api/apiClient';
 import type {
   AdminEmployee,
   AdminAttendance,
@@ -16,11 +9,12 @@ import type {
 } from '../types/api';
 
 // Employees Query & Mutation
-export function useAdminEmployees() {
+export function useAdminEmployees(filters?: { search?: string; department?: string; role?: string }) {
   return useQuery<AdminEmployee[]>({
-    queryKey: ['admin-employees'],
+    queryKey: ['admin-employees', filters],
     queryFn: async () => {
-      return getAdminEmployees();
+      const res = await apiClient.employees.list(filters);
+      return res?.employees || [];
     },
   });
 }
@@ -29,8 +23,9 @@ export function useAdminEmployee(id?: string) {
   return useQuery<AdminEmployee | undefined>({
     queryKey: ['admin-employee', id],
     queryFn: async () => {
-      const list = getAdminEmployees();
-      return list.find((e) => e.id === id || e.loginId === id);
+      if (!id) return undefined;
+      const res = await apiClient.employees.getById(id);
+      return res;
     },
     enabled: !!id,
   });
@@ -39,21 +34,13 @@ export function useAdminEmployee(id?: string) {
 export function useUpdateAdminEmployee() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (updated: Partial<AdminEmployee> & { id: string }) => {
-      const all = getAdminEmployees();
-      const idx = all.findIndex((e) => e.id === updated.id);
-      if (idx !== -1) {
-        all[idx] = { ...all[idx], ...updated };
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('dayflow_registered_employees', JSON.stringify(all));
-        }
-        return all[idx];
-      }
-      return updated as AdminEmployee;
+    mutationFn: async ({ id, ...data }: Partial<AdminEmployee> & { id: string }) => {
+      const res = await apiClient.employees.update(id, data);
+      return res;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-employees'] });
-      if (data) {
+      if (data?.id) {
         queryClient.invalidateQueries({ queryKey: ['admin-employee', data.id] });
       }
     },
@@ -61,42 +48,23 @@ export function useUpdateAdminEmployee() {
 }
 
 // Attendance Query
-export function useAdminAttendance(date?: string) {
+export function useAdminAttendance(filters?: { date?: string; month?: string; department?: string }) {
   return useQuery<AdminAttendance[]>({
-    queryKey: ['admin-attendance', date || 'today'],
+    queryKey: ['admin-attendance', filters],
     queryFn: async () => {
-      return [...INITIAL_ADMIN_ATTENDANCE];
+      const res = await apiClient.attendance.getAll(filters);
+      return Array.isArray(res?.records) ? res.records : Array.isArray(res) ? res : [];
     },
   });
 }
 
 // Leave Requests Query & Decision Mutations
-export function useAdminLeaveRequests() {
+export function useAdminLeaveRequests(status?: string) {
   return useQuery<AdminLeaveRequest[]>({
-    queryKey: ['admin-leave-requests'],
+    queryKey: ['admin-leave-requests', status],
     queryFn: async () => {
-      if (typeof window !== 'undefined') {
-        const raw = localStorage.getItem('dayflow_leave_requests');
-        if (raw) {
-          try {
-            const employeeRequests = JSON.parse(raw);
-            return employeeRequests.map((r: any) => ({
-              id: r.id,
-              employeeId: 'emp-current',
-              employeeName: 'Employee',
-              department: 'Engineering',
-              leaveType: r.leaveType,
-              startDate: r.startDate,
-              endDate: r.endDate,
-              daysCount: r.daysCount || 1,
-              status: r.status,
-              reason: r.reason,
-              submittedAt: r.createdAt || new Date().toISOString(),
-            }));
-          } catch {}
-        }
-      }
-      return [...INITIAL_ADMIN_LEAVE_REQUESTS];
+      const res = await apiClient.leave.getAll(status);
+      return Array.isArray(res?.requests) ? res.requests : Array.isArray(res) ? res : [];
     },
   });
 }
@@ -105,7 +73,10 @@ export function useAdminLeaveRequest(id?: string) {
   return useQuery<AdminLeaveRequest | undefined>({
     queryKey: ['admin-leave-request', id],
     queryFn: async () => {
-      return INITIAL_ADMIN_LEAVE_REQUESTS.find((l) => l.id === id);
+      if (!id) return undefined;
+      const all = await apiClient.leave.getAll();
+      const list = Array.isArray(all?.requests) ? all.requests : Array.isArray(all) ? all : [];
+      return list.find((l: any) => l.id === id);
     },
     enabled: !!id,
   });
@@ -115,18 +86,11 @@ export function useApproveLeave() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, comment }: { id: string; comment?: string }) => {
-      const req = INITIAL_ADMIN_LEAVE_REQUESTS.find((l) => l.id === id);
-      if (req) {
-        req.status = 'approved';
-        req.adminComment = comment || 'Approved by HR Administrator.';
-      }
-      return req;
+      return apiClient.leave.review(id, 'approved', comment);
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-leave-requests'] });
-      if (data) {
-        queryClient.invalidateQueries({ queryKey: ['admin-leave-request', data.id] });
-      }
+      queryClient.invalidateQueries({ queryKey: ['admin-reports'] });
     },
   });
 }
@@ -135,18 +99,11 @@ export function useRejectLeave() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, comment }: { id: string; comment?: string }) => {
-      const req = INITIAL_ADMIN_LEAVE_REQUESTS.find((l) => l.id === id);
-      if (req) {
-        req.status = 'rejected';
-        req.adminComment = comment || 'Rejected by HR Administrator.';
-      }
-      return req;
+      return apiClient.leave.review(id, 'rejected', comment);
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-leave-requests'] });
-      if (data) {
-        queryClient.invalidateQueries({ queryKey: ['admin-leave-request', data.id] });
-      }
+      queryClient.invalidateQueries({ queryKey: ['admin-reports'] });
     },
   });
 }
@@ -156,7 +113,8 @@ export function useAdminPayroll() {
   return useQuery<AdminPayrollRecord[]>({
     queryKey: ['admin-payroll'],
     queryFn: async () => {
-      return [...INITIAL_ADMIN_PAYROLL];
+      const res = await apiClient.payroll.getAll();
+      return Array.isArray(res?.payroll) ? res.payroll : Array.isArray(res) ? res : [];
     },
   });
 }
@@ -164,25 +122,41 @@ export function useAdminPayroll() {
 export function useUpdatePayroll() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (updated: Partial<AdminPayrollRecord> & { id: string }) => {
-      const idx = INITIAL_ADMIN_PAYROLL.findIndex((p) => p.id === updated.id);
-      if (idx !== -1) {
-        INITIAL_ADMIN_PAYROLL[idx] = { ...INITIAL_ADMIN_PAYROLL[idx], ...updated };
-      }
-      return INITIAL_ADMIN_PAYROLL[idx];
+    mutationFn: async ({ id, ...data }: Partial<AdminPayrollRecord> & { id: string }) => {
+      return apiClient.payroll.updateSalary(id, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-payroll'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-reports'] });
     },
   });
 }
 
 // Reports Query
-export function useAdminReports() {
+export function useAdminReports(month?: string) {
   return useQuery<AdminReportSummary>({
-    queryKey: ['admin-reports'],
+    queryKey: ['admin-reports', month],
     queryFn: async () => {
-      return { ...INITIAL_ADMIN_REPORT_SUMMARY };
+      const [dash, att, pay] = await Promise.allSettled([
+        apiClient.reports.getDashboardSummary(),
+        apiClient.reports.getAttendanceSummary(month),
+        apiClient.reports.getPayrollSummary(),
+      ]);
+
+      const dashData = dash.status === 'fulfilled' ? dash.value : {};
+      const attData = att.status === 'fulfilled' ? att.value : {};
+      const payData = pay.status === 'fulfilled' ? pay.value : {};
+
+      return {
+        totalEmployees: dashData?.totalEmployees ?? 0,
+        presentToday: dashData?.presentToday ?? 0,
+        onLeaveToday: dashData?.onLeaveToday ?? 0,
+        pendingLeaves: dashData?.pendingLeaveApprovals ?? 0,
+        avgAttendanceRate: attData?.avgAttendanceRate ?? 95,
+        totalPayrollMonthly: payData?.totalMonthlyWage ?? 0,
+        avgSalary: payData?.averageMonthlySalary ?? 0,
+        departmentBreakdown: payData?.departmentBreakdown || {},
+      };
     },
   });
 }

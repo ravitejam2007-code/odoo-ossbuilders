@@ -1,42 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  getPersistentEmployees,
-  getPersistentAttendance,
-  getPersistentLeaveRequests,
-  savePersistentLeaveRequest,
-  INITIAL_LEAVE_BALANCE,
-  INITIAL_PAYSLIPS,
-} from '../api/mockData';
-import { apiClient } from '../api/apiClient';
+import { apiClient, getStoredSession, setAuthSession } from '../api/apiClient';
 import type {
   Employee,
+  AttendanceResponse,
   AttendanceRecord,
   LeaveRequest,
   LeaveBalance,
   NotificationItem,
   PayslipItem,
+  PayrollResponse,
 } from '../types/api';
 
 export function useCurrentUser() {
   return useQuery<Employee>({
     queryKey: ['current-user'],
-    queryFn: async () => {
-      try {
-        const data = await apiClient.profile.getMe();
-        if (data) return data;
-      } catch {}
-
-      const all = getPersistentEmployees();
-      const saved = typeof window !== 'undefined' ? localStorage.getItem('dayflow_employee_user') : null;
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {
-          return all[0];
-        }
-      }
-      return all[0];
-    },
+    queryFn: () => apiClient.profile.getMe(),
   });
 }
 
@@ -46,22 +24,95 @@ export function useColleagues() {
     queryFn: async () => {
       try {
         const data = await apiClient.employees.list();
-        if (data?.employees && data.employees.length > 0) return data.employees;
-      } catch {}
-      return getPersistentEmployees();
+        return data?.employees || [];
+      } catch {
+        // Normal employees do not have access to full admin directory
+        return [];
+      }
     },
   });
 }
 
-export function useAttendanceHistory() {
-  return useQuery<AttendanceRecord[]>({
-    queryKey: ['attendance-history'],
-    queryFn: async () => {
-      try {
-        const data = await apiClient.attendance.getMyAttendance();
-        if (data?.records && data.records.length > 0) return data.records;
-      } catch {}
-      return getPersistentAttendance();
+export function useAttendanceHistory(month?: string) {
+  return useQuery<AttendanceResponse>({
+    queryKey: ['attendance-history', month || 'current'],
+    queryFn: () => apiClient.attendance.getMyAttendance(month),
+  });
+}
+
+export function useCheckInMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await apiClient.attendance.checkIn();
+      return res;
+    },
+    onSuccess: (res) => {
+      // Optimistically update current-user workStatus
+      queryClient.setQueryData(['current-user'], (old: Employee | undefined) => {
+        if (!old) return old;
+        const updated = { ...old, workStatus: 'present' as const };
+        const session = getStoredSession();
+        if (session) {
+          setAuthSession({ ...session, user: updated });
+        }
+        return updated;
+      });
+
+      // Optimistically update attendance summary
+      queryClient.setQueryData(['attendance-history', 'current'], (old: AttendanceResponse | undefined) => {
+        if (!old) return old;
+        return {
+          ...old,
+          summary: {
+            ...old.summary,
+            status: 'present' as const,
+            checkInTime: res.checkIn || old.summary.checkInTime || '09:00 AM',
+          },
+        };
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['attendance-history'] });
+      queryClient.invalidateQueries({ queryKey: ['current-user'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+  });
+}
+
+export function useCheckOutMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await apiClient.attendance.checkOut();
+      return res;
+    },
+    onSuccess: () => {
+      // Optimistically update current-user workStatus
+      queryClient.setQueryData(['current-user'], (old: Employee | undefined) => {
+        if (!old) return old;
+        const updated = { ...old, workStatus: 'absent' as const };
+        const session = getStoredSession();
+        if (session) {
+          setAuthSession({ ...session, user: updated });
+        }
+        return updated;
+      });
+
+      // Optimistically update attendance summary
+      queryClient.setQueryData(['attendance-history', 'current'], (old: AttendanceResponse | undefined) => {
+        if (!old) return old;
+        return {
+          ...old,
+          summary: {
+            ...old.summary,
+            status: 'absent' as const,
+          },
+        };
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['attendance-history'] });
+      queryClient.invalidateQueries({ queryKey: ['current-user'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
   });
 }
@@ -69,13 +120,7 @@ export function useAttendanceHistory() {
 export function useLeaveBalance() {
   return useQuery<LeaveBalance>({
     queryKey: ['leave-balance'],
-    queryFn: async () => {
-      try {
-        const data = await apiClient.leave.getMyBalance();
-        if (data) return data;
-      } catch {}
-      return { ...INITIAL_LEAVE_BALANCE };
-    },
+    queryFn: () => apiClient.leave.getMyBalance(),
   });
 }
 
@@ -83,11 +128,8 @@ export function useLeaveRequests() {
   return useQuery<LeaveRequest[]>({
     queryKey: ['leave-requests'],
     queryFn: async () => {
-      try {
-        const data = await apiClient.leave.getMyLeave();
-        if (data?.requests && data.requests.length > 0) return data.requests;
-      } catch {}
-      return getPersistentLeaveRequests();
+      const data = await apiClient.leave.getMyLeave();
+      return data?.requests || [];
     },
   });
 }
@@ -95,25 +137,55 @@ export function useLeaveRequests() {
 export function useSubmitLeaveRequest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (newRequest: Omit<LeaveRequest, 'id' | 'status' | 'createdAt'>) => {
-      try {
-        const created = await apiClient.leave.apply(newRequest);
-        if (created) return created;
-      } catch {}
-
-      const created: LeaveRequest = {
-        ...newRequest,
-        id: `leave-${Date.now()}`,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-      };
-      savePersistentLeaveRequest(created);
-      return created;
-    },
+    mutationFn: (newRequest: {
+      leaveType: string;
+      startDate: string;
+      endDate: string;
+      daysCount: number;
+      reason?: string;
+      attachmentName?: string;
+      attachmentUrl?: string;
+    }) => apiClient.leave.apply(newRequest),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
       queryClient.invalidateQueries({ queryKey: ['leave-balance'] });
       queryClient.invalidateQueries({ queryKey: ['attendance-history'] });
+      queryClient.invalidateQueries({ queryKey: ['current-user'] });
+    },
+  });
+}
+
+export function useUploadLeaveAttachment() {
+  return useMutation({
+    mutationFn: (file: File) => apiClient.leave.upload(file),
+  });
+}
+
+export function useUpdateProfileMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (fields: Partial<Employee>) => apiClient.profile.updateMe(fields),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['current-user'], updated);
+      queryClient.invalidateQueries({ queryKey: ['current-user'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+  });
+}
+
+export function usePayroll() {
+  return useQuery<PayrollResponse>({
+    queryKey: ['payroll'],
+    queryFn: () => apiClient.payroll.getMyPayroll(),
+  });
+}
+
+export function usePayslips() {
+  return useQuery<PayslipItem[]>({
+    queryKey: ['payslips'],
+    queryFn: async () => {
+      const data = await apiClient.payroll.getMyPayroll();
+      return data?.payslips || [];
     },
   });
 }
@@ -122,28 +194,28 @@ export function useNotifications() {
   return useQuery<NotificationItem[]>({
     queryKey: ['notifications'],
     queryFn: async () => {
-      try {
-        const data = await apiClient.notifications.getMe();
-        if (data && data.length > 0) return data;
-      } catch {}
-      if (typeof window !== 'undefined') {
-        const raw = localStorage.getItem('dayflow_notifications');
-        if (raw) return JSON.parse(raw);
-      }
-      return [];
+      const data = await apiClient.notifications.getMe();
+      return Array.isArray(data) ? data : [];
     },
   });
 }
 
-export function usePayslips() {
-  return useQuery<PayslipItem[]>({
-    queryKey: ['payslips'],
-    queryFn: async () => {
-      try {
-        const data = await apiClient.payroll.getMyPayroll();
-        if (data?.payslips && data.payslips.length > 0) return data.payslips;
-      } catch {}
-      return [...INITIAL_PAYSLIPS];
+export function useMarkNotificationRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.notifications.markAsRead(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+}
+
+export function useMarkAllNotificationsRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiClient.notifications.markAllAsRead(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 }

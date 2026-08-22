@@ -9,7 +9,11 @@ export const ProfileQuickCard: React.FC<{ employee: Employee }> = ({ employee })
     <Card className="p-5 bg-white border-zinc-200 flex flex-col justify-between space-y-4">
       <div className="flex items-start justify-between">
         <div className="flex items-center space-x-3">
-          <img src={employee.avatar} alt="" className="w-12 h-12 rounded-xl object-cover border border-zinc-200" />
+          <img
+            src={employee.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150'}
+            alt={employee.name || 'Employee'}
+            className="w-12 h-12 rounded-xl object-cover border border-zinc-200"
+          />
           <div className="min-w-0">
             <h3 className="text-base font-bold text-zinc-950 truncate">{employee.name}</h3>
             <p className="text-xs text-zinc-500 truncate">{employee.jobTitle}</p>

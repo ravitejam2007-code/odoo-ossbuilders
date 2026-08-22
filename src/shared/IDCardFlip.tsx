@@ -30,8 +30,8 @@ export const IDCardFlip: React.FC<IDCardFlipProps> = ({ employee, onClick }) => 
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <img
-            src={employee.avatar}
-            alt={employee.name}
+            src={employee.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150'}
+            alt={employee.name || 'Employee'}
             className="w-11 h-11 rounded-full object-cover border border-[#dee3e9] flex-shrink-0"
           />
           <div className="min-w-0">

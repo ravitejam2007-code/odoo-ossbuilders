@@ -3,7 +3,7 @@
 > **Comprehensive Integration Manual for Frontend Engineers**  
 > **Backend Architecture:** Node.js Express + TypeScript + Supabase PostgreSQL + Brevo Custom SMTP  
 > **API Version:** `v1`  
-> **Base URL (Local):** `http://localhost:4000/api/v1`  
+> **Base URL (Local):** `http://localhost:3000/api/v1`  
 > **Authentication Method:** `Bearer <JWT_ACCESS_TOKEN>` in HTTP `Authorization` Header  
 
 ---

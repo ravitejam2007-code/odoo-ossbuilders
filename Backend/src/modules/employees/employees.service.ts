@@ -10,7 +10,7 @@ export class EmployeesService {
   async listEmployees(filters: { search?: string; department?: string; role?: string; page?: number; limit?: number }) {
     let query = supabaseAdmin
       .from('profiles')
-      .select('*, users!inner(id, login_id, email, role, email_verified)', { count: 'exact' });
+      .select('*, users!profiles_user_id_fkey(id, login_id, email, role, email_verified)', { count: 'exact' });
 
     if (filters.department) {
       query = query.eq('department', filters.department);
@@ -68,7 +68,7 @@ export class EmployeesService {
   async getEmployeeById(userId: string) {
     const { data: profile, error } = await supabaseAdmin
       .from('profiles')
-      .select('*, users!inner(id, login_id, email, role, email_verified)')
+      .select('*, users!profiles_user_id_fkey(id, login_id, email, role, email_verified)')
       .eq('user_id', userId)
       .single();
 

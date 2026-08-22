@@ -2,20 +2,37 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../../shared/Button';
 import { FormField, Input } from '../../shared/FormField';
-import { Eye, EyeOff, AlertCircle, User, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, User, ShieldCheck, CheckCircle2, Copy } from 'lucide-react';
+import type { SignupResponse } from '../types/api';
 
 export const LoginView: React.FC = () => {
   const { login, signup } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [selectedRole, setSelectedRole] = useState<'employee' | 'admin'>('employee');
+  
+  // Sign up fields
+  const [companyName, setCompanyName] = useState('Odoo Inc');
   const [name, setName] = useState('');
-  const [loginId, setLoginId] = useState('');
-  const [department, setDepartment] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('+91 98765 12345');
+  const [signupSuccessData, setSignupSuccessData] = useState<SignupResponse | null>(null);
+
+  // Common & Sign in fields
+  const [loginIdOrEmail, setLoginIdOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyLoginId = () => {
+    if (signupSuccessData?.loginId) {
+      navigator.clipboard.writeText(signupSuccessData.loginId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,66 +43,71 @@ export const LoginView: React.FC = () => {
         setError('Please enter your full name.');
         return;
       }
-      if (!loginId.trim()) {
-        setError(`Please enter your ${selectedRole === 'employee' ? 'Employee ID or Email' : 'Admin Email'}.`);
+      if (!email.trim()) {
+        setError('Please enter your email address.');
         return;
       }
       if (!password.trim()) {
         setError('Please enter a password.');
         return;
       }
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters long.');
+        return;
+      }
       if (password !== confirmPassword) {
         setError('Passwords do not match.');
         return;
       }
+
+      setLoading(true);
+      try {
+        const res = await signup({
+          companyName: companyName.trim() || 'Dayflow Inc',
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone.trim() || '+91 98765 12345',
+          password,
+          role: selectedRole === 'admin' ? 'admin' : 'employee',
+        });
+        setSignupSuccessData(res);
+        setLoginIdOrEmail(res.loginId || email);
+      } catch (err: any) {
+        setError(err.message || 'Signup failed. Please check your information and try again.');
+      } finally {
+        setLoading(false);
+      }
     } else {
-      if (!loginId.trim() || !password.trim()) {
-        setError(`Please enter your ${selectedRole === 'employee' ? 'Employee ID' : 'Admin Email'} and password.`);
+      if (!loginIdOrEmail.trim() || !password.trim()) {
+        setError('Please enter your Login ID / Email and password.');
         return;
       }
-    }
 
-    setLoading(true);
-    try {
-      if (selectedRole === 'employee') {
-        if (mode === 'signup') {
-          signup({
-            name: name.trim(),
-            email: loginId.trim(),
-            department: department.trim() || 'Engineering',
-            password,
-          });
+      setLoading(true);
+      try {
+        const session = await login(loginIdOrEmail.trim(), password);
+        if (session.user.role === 'admin') {
+          window.location.href = '/admin/dashboard';
         } else {
-          login(loginId.trim(), password);
+          window.location.href = '/dashboard';
         }
-        window.location.href = '/dashboard';
-      } else {
-        localStorage.setItem(
-          'dayflow_admin_user',
-          JSON.stringify({
-            id: 'emp-admin-1',
-            loginId: 'OIADMN20260001',
-            name: name.trim() || 'Admin User',
-            email: loginId.trim(),
-            company: 'Odoo India',
-            department: department.trim() || 'Human Resources',
-            jobTitle: 'HR Director / Admin',
-            role: 'admin',
-            workStatus: 'present',
-          })
-        );
-        window.location.href = '/admin/dashboard';
+      } catch (err: any) {
+        if (err.code === 'EMAIL_NOT_VERIFIED') {
+          setError('Your email has not been verified yet. Please check your inbox for the verification link or proceed to sign in once confirmed.');
+        } else if (err.code === 'INVALID_CREDENTIALS') {
+          setError('Invalid Login ID / Email or password. Please verify your credentials.');
+        } else {
+          setError(err.message || 'Authentication failed. Please verify your credentials and try again.');
+        }
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      setError('Authentication failed. Please verify your credentials and try again.');
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
     <div className="h-screen max-h-screen bg-[#ffffff] flex flex-col font-sans text-[#1c1e21] overflow-hidden">
-      {/* Sleek Minimal Header Bar (56px) */}
+      {/* Header Bar */}
       <header className="w-full h-14 border-b border-[#dee3e9] px-6 bg-[#ffffff] flex items-center justify-between flex-shrink-0">
         <div className="max-w-[1280px] w-full mx-auto flex items-center justify-between">
           <a href="/" className="flex items-center gap-2.5 group">
@@ -108,9 +130,9 @@ export const LoginView: React.FC = () => {
         </div>
       </header>
 
-      {/* Centered Auth Card Container — Fits strictly inside viewport */}
+      {/* Centered Auth Card Container */}
       <main className="flex-1 flex items-center justify-center px-4 py-3 sm:py-6 overflow-y-auto">
-        <div className="w-full max-w-[400px] space-y-4 my-auto">
+        <div className="w-full max-w-[420px] space-y-4 my-auto">
           
           {/* Headline */}
           <div className="text-center space-y-1">
@@ -119,12 +141,12 @@ export const LoginView: React.FC = () => {
             </h1>
             <p className="text-[13px] font-normal leading-[1.4] text-[#5d6c7b]">
               {mode === 'signin'
-                ? 'Select your role to access your Dayflow portal'
-                : 'Register a new employee or admin account'}
+                ? 'Sign in with your Login ID or Email to access Dayflow'
+                : 'Register a new verified employee account'}
             </p>
           </div>
 
-          {/* Role Selection Pill Tabs */}
+          {/* Role Selection Tabs */}
           <div className="p-1 rounded-full bg-[#f1f4f7] border border-[#dee3e9] grid grid-cols-2 gap-1">
             <button
               type="button"
@@ -133,7 +155,7 @@ export const LoginView: React.FC = () => {
                 setError('');
               }}
               className={[
-                'flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-full text-[12px] font-bold transition-all duration-150',
+                'flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-full text-[12px] font-bold transition-all duration-150 cursor-pointer',
                 selectedRole === 'employee'
                   ? 'bg-[#0a1317] text-white shadow-xs'
                   : 'text-[#5d6c7b] hover:text-[#0a1317]',
@@ -150,7 +172,7 @@ export const LoginView: React.FC = () => {
                 setError('');
               }}
               className={[
-                'flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-full text-[12px] font-bold transition-all duration-150',
+                'flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-full text-[12px] font-bold transition-all duration-150 cursor-pointer',
                 selectedRole === 'admin'
                   ? 'bg-[#0a1317] text-white shadow-xs'
                   : 'text-[#5d6c7b] hover:text-[#0a1317]',
@@ -164,7 +186,7 @@ export const LoginView: React.FC = () => {
           {/* Auth Form Panel */}
           <div className="bg-[#ffffff] rounded-[20px] border border-[#dee3e9] shadow-[rgba(20,22,26,0.15)_0px_2px_8px_0px] p-5 sm:p-6 space-y-4">
             
-            {/* Mode Switcher Tabs (Sign In / Sign Up) */}
+            {/* Mode Switcher Tabs */}
             <div className="flex border-b border-[#dee3e9] pb-2 justify-center gap-6">
               <button
                 type="button"
@@ -198,6 +220,44 @@ export const LoginView: React.FC = () => {
               </button>
             </div>
 
+            {/* Signup Success Notice Modal/Card */}
+            {signupSuccessData && mode === 'signup' && (
+              <div className="p-4 rounded-[14px] bg-[#e6f4ea] border border-[#31a24c]/30 space-y-2.5">
+                <div className="flex items-center gap-2 text-[#1a7f3c]">
+                  <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-bold text-[14px]">Account Created Successfully!</span>
+                </div>
+                <div className="bg-white p-3 rounded-[10px] border border-[#31a24c]/20 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase text-[#5d6c7b]">Your Backend Login ID:</span>
+                    <button
+                      type="button"
+                      onClick={handleCopyLoginId}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0064e0] hover:underline"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>{copied ? 'Copied!' : 'Copy ID'}</span>
+                    </button>
+                  </div>
+                  <p className="font-mono font-bold text-[16px] text-[#0a1317]">{signupSuccessData.loginId}</p>
+                </div>
+                <p className="text-[12px] text-[#1a7f3c] leading-[1.4]">
+                  {signupSuccessData.message || 'Please check your email for the verification link before logging in.'}
+                </p>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    setMode('signin');
+                    setSignupSuccessData(null);
+                  }}
+                >
+                  Proceed to Sign In &rarr;
+                </Button>
+              </div>
+            )}
+
             {error && (
               <div className="flex items-start gap-2.5 p-2.5 rounded-[8px] bg-[#fde8ec] border border-[#f0284a]/20">
                 <AlertCircle className="w-4 h-4 text-[#e41e3f] flex-shrink-0 mt-0.5" />
@@ -207,57 +267,76 @@ export const LoginView: React.FC = () => {
 
             <form onSubmit={handleSubmit} noValidate className="space-y-3">
               
-              {/* Sign Up Name Field */}
+              {/* Sign Up Fields */}
               {mode === 'signup' && (
-                <FormField label="Full Name" required>
-                  <Input
-                    id="signup-name"
-                    type="text"
-                    value={name}
-                    onChange={(e) => {
-                      setName(e.target.value);
-                      setError('');
-                    }}
-                    placeholder="e.g. Alex Morgan"
-                    autoFocus
-                  />
-                </FormField>
+                <>
+                  <FormField label="Company Name">
+                    <Input
+                      id="signup-company"
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      placeholder="e.g. Odoo Inc"
+                    />
+                  </FormField>
+
+                  <FormField label="Full Name" required>
+                    <Input
+                      id="signup-name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        setError('');
+                      }}
+                      placeholder="e.g. Alex Morgan"
+                      autoFocus
+                    />
+                  </FormField>
+
+                  <FormField label="Work Email Address" required>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setError('');
+                      }}
+                      placeholder="alex.morgan@company.com"
+                    />
+                  </FormField>
+
+                  <FormField label="Phone Number">
+                    <Input
+                      id="signup-phone"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+91 98765 12345"
+                    />
+                  </FormField>
+                </>
               )}
 
-              {/* ID / Email Field */}
-              <FormField
-                label={
-                  mode === 'signup'
-                    ? selectedRole === 'employee' ? 'Employee ID or Email' : 'Admin Work Email'
-                    : selectedRole === 'employee' ? 'Employee ID' : 'Admin Email'
-                }
-                required
-              >
-                <Input
-                  id="login-id"
-                  type={selectedRole === 'employee' ? 'text' : 'email'}
-                  value={loginId}
-                  onChange={(e) => {
-                    setLoginId(e.target.value);
-                    setError('');
-                  }}
-                  placeholder={
-                    selectedRole === 'employee' ? 'e.g. EMP-0042' : 'admin@company.com'
-                  }
-                  autoComplete="username"
-                  autoFocus={mode === 'signin'}
-                />
-              </FormField>
-
-              {/* Sign Up Department Field */}
-              {mode === 'signup' && (
-                <FormField label="Department / Company">
+              {/* Sign In ID / Email Field */}
+              {mode === 'signin' && (
+                <FormField label="Login ID or Email" required>
                   <Input
-                    id="signup-dept"
+                    id="login-id"
                     type="text"
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    placeholder="e.g. Engineering, Human Resources"
+                    value={loginIdOrEmail}
+                    onChange={(e) => {
+                      setLoginIdOrEmail(e.target.value);
+                      setError('');
+                    }}
+                    placeholder={
+                      selectedRole === 'employee'
+                        ? 'e.g. OIJODO20220001 or john.doe@company.com'
+                        : 'admin@dayflow.internal or OIADMI20220001'
+                    }
+                    autoComplete="username"
+                    autoFocus
                   />
                 </FormField>
               )}
@@ -305,27 +384,30 @@ export const LoginView: React.FC = () => {
                 </FormField>
               )}
 
-              {mode === 'signin' && (
-                <div className="flex items-center justify-between text-[12px]">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      className="w-3.5 h-3.5 rounded-[2px] border-[#ced0d4] accent-[#0a1317] cursor-pointer"
-                    />
-                    <span className="text-[#5d6c7b]">Remember me</span>
-                  </label>
-                  <a href="#" className="font-bold text-[#0a1317] hover:underline">
-                    Forgot password?
-                  </a>
-                </div>
-              )}
-
               <Button type="submit" variant="primary" size="md" loading={loading} className="w-full mt-1">
                 {mode === 'signin'
                   ? selectedRole === 'employee' ? 'Sign In to Employee Portal' : 'Sign In as Administrator'
-                  : selectedRole === 'employee' ? 'Create Employee Account' : 'Create Admin Account'}
+                  : 'Create Verified Account'}
               </Button>
             </form>
+
+            {/* Pre-seeded credentials helper */}
+            {mode === 'signin' && (
+              <div className="p-3 rounded-[10px] bg-[#f1f4f7] border border-[#dee3e9] text-[11px] space-y-1 text-[#5d6c7b]">
+                <p className="font-bold text-[#0a1317]">Pre-Seeded Test Credentials:</p>
+                {selectedRole === 'employee' ? (
+                  <p>
+                    <strong>ID:</strong> <code className="font-mono text-[#0a1317]">OIJODO20220001</code> &bull;{' '}
+                    <strong>Pass:</strong> <code className="font-mono text-[#0a1317]">Password@1234</code>
+                  </p>
+                ) : (
+                  <p>
+                    <strong>Email:</strong> <code className="font-mono text-[#0a1317]">admin@dayflow.internal</code> &bull;{' '}
+                    <strong>Pass:</strong> <code className="font-mono text-[#0a1317]">Admin@1234</code>
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Toggle link at bottom */}
             <div className="pt-2 border-t border-[#dee3e9] text-center text-[12px] text-[#5d6c7b]">
@@ -369,7 +451,7 @@ export const LoginView: React.FC = () => {
         </div>
       </main>
 
-      {/* Clean Compact Footer */}
+      {/* Footer */}
       <footer className="w-full h-10 border-t border-[#dee3e9] bg-[#ffffff] flex items-center justify-center flex-shrink-0 text-[11px] text-[#8595a4] px-4">
         <span>&copy; 2026 Dayflow HRMS. All rights reserved.</span>
       </footer>

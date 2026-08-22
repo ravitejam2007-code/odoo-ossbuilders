@@ -128,12 +128,12 @@ export const SystrayHeader: React.FC<SystrayHeaderProps> = ({ currentRoute = '/d
                   aria-haspopup="menu"
                 >
                   <img
-                    src={currentUser.avatar}
-                    alt={currentUser.name}
+                    src={currentUser.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150'}
+                    alt={currentUser.name || 'Employee'}
                     className="w-7 h-7 rounded-full object-cover border border-[#dee3e9] flex-shrink-0"
                   />
                   <span className="hidden sm:block text-[13px] font-bold leading-[1.43] tracking-[-0.14px] text-[#0a1317]">
-                    {currentUser.name.split(' ')[0]}
+                    {currentUser.name?.split(' ')[0] || 'Employee'}
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-[#8595a4] hidden sm:block" aria-hidden="true" />
                 </button>

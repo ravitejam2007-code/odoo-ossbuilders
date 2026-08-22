@@ -1,16 +1,35 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useCurrentUser, useUpdateProfileMutation } from '../hooks/useEmployeeData';
 import { Button } from '../../shared/Button';
 import { Card } from '../../shared/Card';
 import { FormField, Input } from '../../shared/FormField';
 import { Badge } from '../../shared/Badge';
 import {
-  User, Mail, Phone, Building2, Calendar, Lock, Edit, CheckCircle,
-  FileText, ShieldCheck, Award, Plus, Sparkles, Heart, Compass
+  User,
+  Mail,
+  Phone,
+  Building2,
+  Calendar,
+  Lock,
+  Edit,
+  CheckCircle,
+  FileText,
+  ShieldCheck,
+  Award,
+  Plus,
+  Sparkles,
+  Heart,
+  Compass,
 } from 'lucide-react';
 
 export const ProfileView: React.FC = () => {
-  const { currentUser, updateCurrentUserProfile } = useAuth();
+  const { currentUser: authUser } = useAuth();
+  const { data: profileUser, isLoading } = useCurrentUser();
+  const updateProfileMutation = useUpdateProfileMutation();
+
+  const currentUser = profileUser || authUser;
+
   const [activeTab, setActiveTab] = useState<'resume' | 'private' | 'security'>('resume');
   const [savedSuccess, setSavedSuccess] = useState('');
 
@@ -20,59 +39,45 @@ export const ProfileView: React.FC = () => {
   const [showSkillInput, setShowSkillInput] = useState(false);
   const [showCertInput, setShowCertInput] = useState(false);
 
-  // Security state
-  const [currentPw, setCurrentPw] = useState('');
-  const [newPw, setNewPw] = useState('');
-  const [confirmPw, setConfirmPw] = useState('');
-  const [pwError, setPwError] = useState('');
+  if (isLoading && !currentUser) {
+    return <div className="p-8 text-center text-[#5d6c7b]">Loading employee profile...</div>;
+  }
 
   if (!currentUser) return null;
 
-  const currentSkills = currentUser.skills || ['React', 'TypeScript', 'Tailwind CSS', 'Astro', 'Node.js'];
-  const currentCerts = currentUser.certifications || ['AWS Certified Solutions Architect', 'Meta Frontend Developer Professional'];
+  const currentSkills = currentUser.skills || [];
+  const currentCerts = currentUser.certifications || [];
 
-  const handleAddSkill = (e: React.FormEvent) => {
+  const handleAddSkill = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newSkill.trim() && !currentSkills.includes(newSkill.trim())) {
-      updateCurrentUserProfile({
-        skills: [...currentSkills, newSkill.trim()],
-      });
-      setNewSkill('');
-      setShowSkillInput(false);
-      setSavedSuccess('Skill added successfully');
-      setTimeout(() => setSavedSuccess(''), 3000);
+      const updatedSkills = [...currentSkills, newSkill.trim()];
+      try {
+        await updateProfileMutation.mutateAsync({ skills: updatedSkills });
+        setNewSkill('');
+        setShowSkillInput(false);
+        setSavedSuccess('Skill added successfully');
+        setTimeout(() => setSavedSuccess(''), 3000);
+      } catch (err: any) {
+        alert(err.message || 'Failed to save skill');
+      }
     }
   };
 
-  const handleAddCert = (e: React.FormEvent) => {
+  const handleAddCert = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newCert.trim() && !currentCerts.includes(newCert.trim())) {
-      updateCurrentUserProfile({
-        certifications: [...currentCerts, newCert.trim()],
-      });
-      setNewCert('');
-      setShowCertInput(false);
-      setSavedSuccess('Certification added successfully');
-      setTimeout(() => setSavedSuccess(''), 3000);
+      const updatedCerts = [...currentCerts, newCert.trim()];
+      try {
+        await updateProfileMutation.mutateAsync({ certifications: updatedCerts });
+        setNewCert('');
+        setShowCertInput(false);
+        setSavedSuccess('Certification added successfully');
+        setTimeout(() => setSavedSuccess(''), 3000);
+      } catch (err: any) {
+        alert(err.message || 'Failed to save certification');
+      }
     }
-  };
-
-  const handlePasswordChange = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentPw || !newPw || !confirmPw) {
-      setPwError('Please fill in all password fields');
-      return;
-    }
-    if (newPw !== confirmPw) {
-      setPwError('New passwords do not match');
-      return;
-    }
-    setPwError('');
-    setCurrentPw('');
-    setNewPw('');
-    setConfirmPw('');
-    setSavedSuccess('Password updated successfully');
-    setTimeout(() => setSavedSuccess(''), 3000);
   };
 
   return (
@@ -110,7 +115,7 @@ export const ProfileView: React.FC = () => {
           <div className="flex items-center gap-5">
             <div className="relative">
               <img
-                src={currentUser.avatar}
+                src={currentUser.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150'}
                 alt={currentUser.name}
                 className="w-20 h-20 rounded-full object-cover border-2 border-[#dee3e9] shadow-2xs"
               />
@@ -124,7 +129,7 @@ export const ProfileView: React.FC = () => {
                 {currentUser.name}
               </h2>
               <p className="text-[14px] text-[#5d6c7b]">
-                {currentUser.jobTitle} &bull; {currentUser.department}
+                {currentUser.jobTitle || 'Associate Engineer'} &bull; {currentUser.department || 'Engineering'}
               </p>
               <div className="flex items-center gap-2 pt-1">
                 <Badge status={currentUser.workStatus} />
@@ -136,19 +141,19 @@ export const ProfileView: React.FC = () => {
           </div>
 
           <div className="flex flex-col sm:items-end gap-1.5 text-[13px] text-[#5d6c7b]">
-            <p><strong className="text-[#0a1317] font-semibold">Company:</strong> {currentUser.company}</p>
-            <p><strong className="text-[#0a1317] font-semibold">Manager:</strong> {currentUser.manager || 'Sarah Jenkins'}</p>
+            <p><strong className="text-[#0a1317] font-semibold">Company:</strong> {currentUser.company || 'Odoo Inc'}</p>
+            <p><strong className="text-[#0a1317] font-semibold">Manager:</strong> {currentUser.manager || 'Admin User'}</p>
             <p><strong className="text-[#0a1317] font-semibold">Email:</strong> {currentUser.email}</p>
           </div>
         </div>
       </Card>
 
-      {/* ── Navigation Pill Tabs (Wireframe Sections) ───────────────── */}
+      {/* ── Navigation Pill Tabs ───────────────────────────────────── */}
       <div className="flex items-center gap-2 border-b border-[#dee3e9] pb-3">
         {[
           { key: 'resume', label: 'Resume', icon: FileText },
           { key: 'private', label: 'Private Info', icon: User },
-          { key: 'security', label: 'Security & Password', icon: ShieldCheck },
+          { key: 'security', label: 'Account Security', icon: ShieldCheck },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
@@ -182,7 +187,7 @@ export const ProfileView: React.FC = () => {
                 <h3 className="text-[15px] font-semibold">About Me</h3>
               </div>
               <p className="text-[13px] leading-[1.6] text-[#5d6c7b]">
-                {currentUser.about || 'Passionate engineer dedicated to building intuitive, responsive enterprise applications.'}
+                {currentUser.about || 'Dedicated software engineer building high-impact enterprise applications.'}
               </p>
             </Card>
 
@@ -192,7 +197,7 @@ export const ProfileView: React.FC = () => {
                 <h3 className="text-[15px] font-semibold">What I Love About My Job</h3>
               </div>
               <p className="text-[13px] leading-[1.6] text-[#5d6c7b]">
-                {currentUser.whatILoveAboutJob || 'Collaborating with cross-functional teams to solve high-impact workforce challenges.'}
+                {currentUser.whatILoveAboutJob || 'Collaborating with exceptional colleagues and delivering robust features.'}
               </p>
             </Card>
 
@@ -202,7 +207,7 @@ export const ProfileView: React.FC = () => {
                 <h3 className="text-[15px] font-semibold">Interests &amp; Hobbies</h3>
               </div>
               <p className="text-[13px] leading-[1.6] text-[#5d6c7b]">
-                {currentUser.interests?.join(', ') || 'Open source contributions, UI design systems, cycling, and reading.'}
+                {currentUser.interests?.join(', ') || 'System Design, Open Source, Problem Solving'}
               </p>
             </Card>
           </div>
@@ -225,25 +230,33 @@ export const ProfileView: React.FC = () => {
               <form onSubmit={handleAddSkill} className="flex gap-2 max-w-md">
                 <Input
                   type="text"
-                  placeholder="Enter skill (e.g. GraphQL, Figma)..."
+                  placeholder="Enter skill (e.g. React, Node.js)..."
                   value={newSkill}
                   onChange={(e) => setNewSkill(e.target.value)}
                   autoFocus
                 />
-                <Button variant="primary" size="sm" type="submit">Save</Button>
-                <Button variant="ghost" size="sm" type="button" onClick={() => setShowSkillInput(false)}>Cancel</Button>
+                <Button variant="primary" size="sm" type="submit" loading={updateProfileMutation.isPending}>
+                  Save
+                </Button>
+                <Button variant="ghost" size="sm" type="button" onClick={() => setShowSkillInput(false)}>
+                  Cancel
+                </Button>
               </form>
             )}
 
             <div className="flex flex-wrap gap-2">
-              {currentSkills.map((skill) => (
-                <span
-                  key={skill}
-                  className="px-3.5 py-1.5 rounded-full bg-[#f1f4f7] border border-[#dee3e9] text-[13px] font-semibold text-[#0a1317]"
-                >
-                  {skill}
-                </span>
-              ))}
+              {currentSkills.length > 0 ? (
+                currentSkills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="px-3.5 py-1.5 rounded-full bg-[#f1f4f7] border border-[#dee3e9] text-[13px] font-semibold text-[#0a1317]"
+                  >
+                    {skill}
+                  </span>
+                ))
+              ) : (
+                <p className="text-[13px] text-[#8595a4]">No skills added yet.</p>
+              )}
             </div>
           </Card>
 
@@ -270,18 +283,26 @@ export const ProfileView: React.FC = () => {
                   onChange={(e) => setNewCert(e.target.value)}
                   autoFocus
                 />
-                <Button variant="primary" size="sm" type="submit">Save</Button>
-                <Button variant="ghost" size="sm" type="button" onClick={() => setShowCertInput(false)}>Cancel</Button>
+                <Button variant="primary" size="sm" type="submit" loading={updateProfileMutation.isPending}>
+                  Save
+                </Button>
+                <Button variant="ghost" size="sm" type="button" onClick={() => setShowCertInput(false)}>
+                  Cancel
+                </Button>
               </form>
             )}
 
             <div className="space-y-2.5">
-              {currentCerts.map((cert) => (
-                <div key={cert} className="flex items-center gap-3 p-3 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
-                  <Award className="w-4 h-4 text-[#0064e0] flex-shrink-0" />
-                  <span className="text-[13px] font-semibold text-[#0a1317]">{cert}</span>
-                </div>
-              ))}
+              {currentCerts.length > 0 ? (
+                currentCerts.map((cert) => (
+                  <div key={cert} className="flex items-center gap-3 p-3 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
+                    <Award className="w-4 h-4 text-[#0064e0] flex-shrink-0" />
+                    <span className="text-[13px] font-semibold text-[#0a1317]">{cert}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-[13px] text-[#8595a4]">No certifications added yet.</p>
+              )}
             </div>
           </Card>
         </div>
@@ -309,58 +330,64 @@ export const ProfileView: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-[13px]">
               <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
                 <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">Date of Birth</span>
-                <span className="font-mono font-semibold text-[#0a1317] mt-0.5 block">{currentUser.dob || '1995-06-15'}</span>
+                <span className="font-mono font-semibold text-[#0a1317] mt-0.5 block">{currentUser.dob || '—'}</span>
               </div>
               <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
                 <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">Nationality</span>
-                <span className="font-semibold text-[#0a1317] mt-0.5 block">{currentUser.nationality || 'Indian'}</span>
+                <span className="font-semibold text-[#0a1317] mt-0.5 block">{currentUser.nationality || '—'}</span>
               </div>
               <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
                 <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">Gender / Marital</span>
-                <span className="font-semibold text-[#0a1317] mt-0.5 block">{currentUser.gender || 'Male'} &bull; {currentUser.maritalStatus || 'Single'}</span>
+                <span className="font-semibold text-[#0a1317] mt-0.5 block">{currentUser.gender || '—'} &bull; {currentUser.maritalStatus || '—'}</span>
               </div>
               <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9] sm:col-span-2">
                 <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">Residential Address</span>
-                <span className="font-medium text-[#0a1317] mt-0.5 block">{currentUser.residingAddress || '42 Silicon Avenue, Tech Park'}</span>
+                <span className="font-medium text-[#0a1317] mt-0.5 block">{currentUser.residingAddress || '—'}</span>
               </div>
               <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
                 <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">Phone Contact</span>
-                <span className="font-medium text-[#0a1317] mt-0.5 block">{currentUser.phone || '+91 98765 43210'}</span>
+                <span className="font-medium text-[#0a1317] mt-0.5 block">{currentUser.phone || '—'}</span>
               </div>
             </div>
           </Card>
 
-          <Card variant="feature" className="p-6 space-y-5">
-            <div className="border-b border-[#dee3e9] pb-3">
-              <h3 className="text-[16px] font-semibold text-[#0a1317]">
-                Bank &amp; Tax Information
-              </h3>
-              <p className="text-[13px] text-[#5d6c7b]">Salary disbursement and statutory tax records</p>
-            </div>
+          {currentUser.bankDetails && (
+            <Card variant="feature" className="p-6 space-y-5">
+              <div className="border-b border-[#dee3e9] pb-3">
+                <h3 className="text-[16px] font-semibold text-[#0a1317]">
+                  Bank &amp; Tax Information
+                </h3>
+                <p className="text-[13px] text-[#5d6c7b]">Salary disbursement and statutory tax records</p>
+              </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-[13px]">
-              <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
-                <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">Bank Name</span>
-                <span className="font-semibold text-[#0a1317] mt-0.5 block">{currentUser.bankDetails?.bankName || 'HDFC Bank'}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-[13px]">
+                <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
+                  <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">Bank Name</span>
+                  <span className="font-semibold text-[#0a1317] mt-0.5 block">{currentUser.bankDetails.bankName || '—'}</span>
+                </div>
+                <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
+                  <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">Account Number</span>
+                  <span className="font-mono font-semibold text-[#0a1317] mt-0.5 block">{currentUser.bankDetails.accountNumber || '—'}</span>
+                </div>
+                <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
+                  <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">IFSC Code</span>
+                  <span className="font-mono font-semibold text-[#0a1317] mt-0.5 block">{currentUser.bankDetails.ifscCode || '—'}</span>
+                </div>
+                {currentUser.bankDetails.panNo && (
+                  <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
+                    <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">PAN Number</span>
+                    <span className="font-mono font-semibold text-[#0a1317] mt-0.5 block">{currentUser.bankDetails.panNo}</span>
+                  </div>
+                )}
+                {currentUser.bankDetails.uanNo && (
+                  <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
+                    <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">UAN Number</span>
+                    <span className="font-mono font-semibold text-[#0a1317] mt-0.5 block">{currentUser.bankDetails.uanNo}</span>
+                  </div>
+                )}
               </div>
-              <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
-                <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">Account Number</span>
-                <span className="font-mono font-semibold text-[#0a1317] mt-0.5 block">{currentUser.bankDetails?.accountNumber || '918237465012'}</span>
-              </div>
-              <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
-                <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">IFSC Code</span>
-                <span className="font-mono font-semibold text-[#0a1317] mt-0.5 block">{currentUser.bankDetails?.ifscCode || 'HDFC0001234'}</span>
-              </div>
-              <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
-                <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">PAN Number</span>
-                <span className="font-mono font-semibold text-[#0a1317] mt-0.5 block">{currentUser.bankDetails?.panNo || 'ABCDE1234F'}</span>
-              </div>
-              <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
-                <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">UAN Number</span>
-                <span className="font-mono font-semibold text-[#0a1317] mt-0.5 block">{currentUser.bankDetails?.uanNo || '100987654321'}</span>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          )}
         </div>
       )}
 
@@ -369,51 +396,27 @@ export const ProfileView: React.FC = () => {
         <Card variant="feature" className="p-6 space-y-5 max-w-xl">
           <div className="border-b border-[#dee3e9] pb-3">
             <h3 className="text-[16px] font-semibold text-[#0a1317]">
-              Change Password
+              Account Authentication Credentials
             </h3>
-            <p className="text-[13px] text-[#5d6c7b]">Update your system credentials</p>
+            <p className="text-[13px] text-[#5d6c7b]">System identification details</p>
           </div>
 
-          {pwError && (
-            <div className="p-3.5 rounded-[12px] bg-[#fde8ec] border border-[#f0284a]/20 text-[13px] text-[#c0122e] font-bold">
-              {pwError}
+          <div className="space-y-3 text-[13px]">
+            <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
+              <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">Login ID</span>
+              <span className="font-mono font-bold text-[#0a1317] mt-0.5 block">{currentUser.loginId}</span>
             </div>
-          )}
 
-          <form onSubmit={handlePasswordChange} className="space-y-4">
-            <FormField label="Current Password" required>
-              <Input
-                type="password"
-                value={currentPw}
-                onChange={(e) => setCurrentPw(e.target.value)}
-                placeholder="••••••••"
-              />
-            </FormField>
-
-            <FormField label="New Password" required>
-              <Input
-                type="password"
-                value={newPw}
-                onChange={(e) => setNewPw(e.target.value)}
-                placeholder="••••••••"
-              />
-            </FormField>
-
-            <FormField label="Confirm New Password" required>
-              <Input
-                type="password"
-                value={confirmPw}
-                onChange={(e) => setConfirmPw(e.target.value)}
-                placeholder="••••••••"
-              />
-            </FormField>
-
-            <div className="pt-2 flex justify-end">
-              <Button variant="primary" size="md" type="submit">
-                Update Password
-              </Button>
+            <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
+              <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">Registered Work Email</span>
+              <span className="font-semibold text-[#0a1317] mt-0.5 block">{currentUser.email}</span>
             </div>
-          </form>
+
+            <div className="p-3.5 rounded-[12px] bg-[#f1f4f7] border border-[#dee3e9]">
+              <span className="text-[11px] font-semibold uppercase text-[#8595a4] block">Role &amp; Permissions</span>
+              <span className="font-semibold text-[#0a1317] mt-0.5 block capitalize">{currentUser.role || 'Employee'}</span>
+            </div>
+          </div>
         </Card>
       )}
     </div>

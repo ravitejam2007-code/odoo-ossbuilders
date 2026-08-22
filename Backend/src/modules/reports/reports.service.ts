@@ -45,7 +45,7 @@ export class ReportsService {
   async getAttendanceSummary(month?: string) {
     let query = supabaseAdmin
       .from('attendance')
-      .select('*, profiles:user_id(name, department, company)');
+      .select('*, users!attendance_user_id_fkey(login_id, email, profiles!profiles_user_id_fkey(name, department, company))');
 
     if (month) {
       query = query.gte('date', `${month}-01`).lte('date', `${month}-31`);
