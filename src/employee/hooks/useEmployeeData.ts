@@ -1,12 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  MOCK_CURRENT_USER,
-  MOCK_COLLEAGUES,
-  MOCK_ATTENDANCE,
-  MOCK_LEAVE_BALANCE,
-  MOCK_LEAVE_REQUESTS,
-  MOCK_NOTIFICATIONS,
-  MOCK_PAYSLIPS,
+  getPersistentEmployees,
+  getPersistentAttendance,
+  getPersistentLeaveRequests,
+  savePersistentLeaveRequest,
+  INITIAL_LEAVE_BALANCE,
+  INITIAL_PAYSLIPS,
 } from '../api/mockData';
 import { apiClient } from '../api/apiClient';
 import type {
@@ -24,10 +23,19 @@ export function useCurrentUser() {
     queryFn: async () => {
       try {
         const data = await apiClient.profile.getMe();
-        return data;
-      } catch {
-        return { ...MOCK_CURRENT_USER };
+        if (data) return data;
+      } catch {}
+
+      const all = getPersistentEmployees();
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('dayflow_employee_user') : null;
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          return all[0];
+        }
       }
+      return all[0];
     },
   });
 }
@@ -38,10 +46,9 @@ export function useColleagues() {
     queryFn: async () => {
       try {
         const data = await apiClient.employees.list();
-        return data.employees || [...MOCK_COLLEAGUES];
-      } catch {
-        return [...MOCK_COLLEAGUES];
-      }
+        if (data?.employees && data.employees.length > 0) return data.employees;
+      } catch {}
+      return getPersistentEmployees();
     },
   });
 }
@@ -52,10 +59,9 @@ export function useAttendanceHistory() {
     queryFn: async () => {
       try {
         const data = await apiClient.attendance.getMyAttendance();
-        return data.records || [...MOCK_ATTENDANCE];
-      } catch {
-        return [...MOCK_ATTENDANCE];
-      }
+        if (data?.records && data.records.length > 0) return data.records;
+      } catch {}
+      return getPersistentAttendance();
     },
   });
 }
@@ -66,10 +72,9 @@ export function useLeaveBalance() {
     queryFn: async () => {
       try {
         const data = await apiClient.leave.getMyBalance();
-        return data;
-      } catch {
-        return { ...MOCK_LEAVE_BALANCE };
-      }
+        if (data) return data;
+      } catch {}
+      return { ...INITIAL_LEAVE_BALANCE };
     },
   });
 }
@@ -80,10 +85,9 @@ export function useLeaveRequests() {
     queryFn: async () => {
       try {
         const data = await apiClient.leave.getMyLeave();
-        return data.requests || [...MOCK_LEAVE_REQUESTS];
-      } catch {
-        return [...MOCK_LEAVE_REQUESTS];
-      }
+        if (data?.requests && data.requests.length > 0) return data.requests;
+      } catch {}
+      return getPersistentLeaveRequests();
     },
   });
 }
@@ -94,17 +98,17 @@ export function useSubmitLeaveRequest() {
     mutationFn: async (newRequest: Omit<LeaveRequest, 'id' | 'status' | 'createdAt'>) => {
       try {
         const created = await apiClient.leave.apply(newRequest);
-        return created;
-      } catch {
-        const created: LeaveRequest = {
-          ...newRequest,
-          id: `leave-${Date.now()}`,
-          status: 'pending',
-          createdAt: new Date().toISOString(),
-        };
-        MOCK_LEAVE_REQUESTS.unshift(created);
-        return created;
-      }
+        if (created) return created;
+      } catch {}
+
+      const created: LeaveRequest = {
+        ...newRequest,
+        id: `leave-${Date.now()}`,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+      };
+      savePersistentLeaveRequest(created);
+      return created;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
@@ -120,10 +124,13 @@ export function useNotifications() {
     queryFn: async () => {
       try {
         const data = await apiClient.notifications.getMe();
-        return data || [...MOCK_NOTIFICATIONS];
-      } catch {
-        return [...MOCK_NOTIFICATIONS];
+        if (data && data.length > 0) return data;
+      } catch {}
+      if (typeof window !== 'undefined') {
+        const raw = localStorage.getItem('dayflow_notifications');
+        if (raw) return JSON.parse(raw);
       }
+      return [];
     },
   });
 }
@@ -134,10 +141,9 @@ export function usePayslips() {
     queryFn: async () => {
       try {
         const data = await apiClient.payroll.getMyPayroll();
-        return data.payslips || [...MOCK_PAYSLIPS];
-      } catch {
-        return [...MOCK_PAYSLIPS];
-      }
+        if (data?.payslips && data.payslips.length > 0) return data.payslips;
+      } catch {}
+      return [...INITIAL_PAYSLIPS];
     },
   });
 }

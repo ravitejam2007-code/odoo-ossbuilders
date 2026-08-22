@@ -6,7 +6,7 @@ import type {
   AdminReportSummary,
 } from '../types/api';
 
-export const MOCK_ADMIN_EMPLOYEES: AdminEmployee[] = [
+export const INITIAL_ADMIN_EMPLOYEES: AdminEmployee[] = [
   {
     id: 'emp-101',
     loginId: 'OIJODO20220001',
@@ -111,20 +111,28 @@ export const MOCK_ADMIN_EMPLOYEES: AdminEmployee[] = [
     jobTitle: 'HR Specialist',
     manager: 'Sarah Jenkins',
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-    role: 'hr_officer',
+    role: 'employee',
     workStatus: 'on_leave',
     joinedYear: 2024,
     serialNo: '0003',
     about: 'HR operations lead handling employee onboarding and leave approvals.',
-    skills: ['HR Operations', 'Payroll Administration', 'Employee Engagement'],
+    skills: ['HR Operations', 'Payroll Administration'],
+    bankDetails: {
+      accountNumber: '918237465014',
+      bankName: 'Axis Bank',
+      ifscCode: 'UTIB0000123',
+      panNo: 'KLMNO9012P',
+      uanNo: '100987654323',
+      empCode: 'OIRASM20240003',
+    },
     salaryInfo: {
       monthWage: 45000,
       yearlyWage: 540000,
       basicSalary: 22500,
       houseRentAllowance: 11250,
       standardAllowance: 5000,
-      performanceBonus: 4000,
-      leaveTravelAllowance: 2250,
+      performanceBonus: 3000,
+      leaveTravelAllowance: 2000,
       fixedAllowance: 0,
       pfContributionEmployee: 2700,
       pfContributionEmployer: 2700,
@@ -135,132 +143,144 @@ export const MOCK_ADMIN_EMPLOYEES: AdminEmployee[] = [
   },
 ];
 
-export const MOCK_ADMIN_ATTENDANCE: AdminAttendance[] = [
+export const INITIAL_ADMIN_ATTENDANCE: AdminAttendance[] = [
   {
-    id: 'att-201',
+    id: 'att-1',
     employeeId: 'emp-101',
     employeeName: 'John Doe',
     employeeAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
     department: 'Engineering',
     date: '2026-08-22',
-    dayOfWeek: 'Saturday',
     checkIn: '09:12 AM',
     checkOut: undefined,
-    workHours: '04:37 hrs',
-    extraHours: '00:00 hrs',
+    workHours: '04:37',
+    extraHours: '00:00',
     status: 'present',
   },
   {
-    id: 'att-202',
+    id: 'att-2',
     employeeId: 'emp-102',
     employeeName: 'Matt Alice',
     employeeAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
     department: 'Design',
     date: '2026-08-22',
-    dayOfWeek: 'Saturday',
-    checkIn: '09:00 AM',
-    checkOut: '05:30 PM',
-    workHours: '08:30 hrs',
-    extraHours: '00:30 hrs',
+    checkIn: '08:58 AM',
+    checkOut: undefined,
+    workHours: '04:51',
+    extraHours: '00:00',
     status: 'present',
   },
   {
-    id: 'att-203',
+    id: 'att-3',
     employeeId: 'emp-103',
     employeeName: 'Rachel Smith',
     employeeAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
     department: 'Human Resources',
     date: '2026-08-22',
-    dayOfWeek: 'Saturday',
-    checkIn: '--:--',
-    checkOut: '--:--',
-    workHours: '00:00 hrs',
-    extraHours: '00:00 hrs',
+    checkIn: undefined,
+    checkOut: undefined,
+    workHours: '00:00',
+    extraHours: '00:00',
     status: 'on_leave',
   },
 ];
 
-export const MOCK_ADMIN_LEAVE_REQUESTS: AdminLeaveRequest[] = [
+export const INITIAL_ADMIN_LEAVE_REQUESTS: AdminLeaveRequest[] = [
   {
     id: 'leave-301',
     employeeId: 'emp-103',
     employeeName: 'Rachel Smith',
     employeeAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
     department: 'Human Resources',
-    leaveType: 'Paid Time Off',
+    leaveType: 'Sick Leave',
     startDate: '2026-08-22',
-    endDate: '2026-08-25',
+    endDate: '2026-08-24',
     daysCount: 3,
     status: 'pending',
-    reason: 'Family event and personal travel.',
-    createdAt: '2026-08-20T10:30:00Z',
+    reason: 'Viral fever and prescribed medical rest.',
+    submittedAt: '2026-08-21T18:30:00Z',
   },
   {
     id: 'leave-302',
-    employeeId: 'emp-102',
-    employeeName: 'Matt Alice',
-    employeeAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    department: 'Design',
-    leaveType: 'Sick Leave',
-    startDate: '2026-08-10',
-    endDate: '2026-08-11',
-    daysCount: 2,
-    status: 'approved',
-    attachmentName: 'Medical_Certificate_Aug2026.pdf',
-    reason: 'Viral fever treatment.',
-    adminComment: 'Approved. Medical certificate verified.',
-    createdAt: '2026-08-09T08:15:00Z',
-  },
-];
-
-export const MOCK_ADMIN_PAYROLL: AdminPayrollRecord[] = [
-  {
-    id: 'pay-401',
     employeeId: 'emp-101',
     employeeName: 'John Doe',
     employeeAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
     department: 'Engineering',
-    month: 'July',
-    year: 2026,
-    grossSalary: 50000,
-    basicSalary: 25000,
-    hra: 12500,
-    deductions: 3200,
-    netSalary: 46800,
-    payableDays: 22,
-    totalDaysInMonth: 22,
-    status: 'processed',
-  },
-  {
-    id: 'pay-402',
-    employeeId: 'emp-102',
-    employeeName: 'Matt Alice',
-    employeeAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    department: 'Design',
-    month: 'July',
-    year: 2026,
-    grossSalary: 60000,
-    basicSalary: 30000,
-    hra: 15000,
-    deductions: 3800,
-    netSalary: 56200,
-    payableDays: 22,
-    totalDaysInMonth: 22,
-    status: 'processed',
+    leaveType: 'Paid Time Off',
+    startDate: '2026-08-28',
+    endDate: '2026-08-30',
+    daysCount: 3,
+    status: 'pending',
+    reason: 'Family vacation and personal errands.',
+    submittedAt: '2026-08-20T10:30:00Z',
   },
 ];
 
-export const MOCK_ADMIN_REPORT_SUMMARY: AdminReportSummary = {
-  totalEmployees: 48,
-  presentToday: 42,
-  onLeaveToday: 4,
-  absentToday: 2,
-  pendingLeaveRequests: 3,
-  monthlyPayrollBudget: 2450000,
-  departmentCounts: {
-    Engineering: 20,
-    Design: 8,
-    'Human Resources': 6,
-    Sales: 14,
+export const INITIAL_ADMIN_PAYROLL: AdminPayrollRecord[] = [
+  {
+    id: 'pr-1',
+    employeeId: 'emp-101',
+    employeeName: 'John Doe',
+    department: 'Engineering',
+    jobTitle: 'Senior Frontend Developer',
+    monthlyWage: 50000,
+    basicSalary: 25000,
+    allowances: 25000,
+    deductions: 3200,
+    netPay: 46800,
+    lastUpdated: '2026-08-01',
   },
+  {
+    id: 'pr-2',
+    employeeId: 'emp-102',
+    employeeName: 'Matt Alice',
+    department: 'Design',
+    jobTitle: 'Lead Product Designer',
+    monthlyWage: 60000,
+    basicSalary: 30000,
+    allowances: 30000,
+    deductions: 3800,
+    netPay: 56200,
+    lastUpdated: '2026-08-01',
+  },
+  {
+    id: 'pr-3',
+    employeeId: 'emp-103',
+    employeeName: 'Rachel Smith',
+    department: 'Human Resources',
+    jobTitle: 'HR Specialist',
+    monthlyWage: 45000,
+    basicSalary: 22500,
+    allowances: 22500,
+    deductions: 2900,
+    netPay: 42100,
+    lastUpdated: '2026-08-01',
+  },
+];
+
+export const INITIAL_ADMIN_REPORT_SUMMARY: AdminReportSummary = {
+  totalEmployees: 3,
+  activeCount: 2,
+  onLeaveCount: 1,
+  pendingLeavesCount: 2,
+  monthlyPayrollTotal: 155000,
+  averageAttendancePct: 94.2,
 };
+
+// Aliases for Astro getStaticPaths and backwards-compatibility
+export const MOCK_ADMIN_EMPLOYEES = INITIAL_ADMIN_EMPLOYEES;
+export const MOCK_ADMIN_ATTENDANCE = INITIAL_ADMIN_ATTENDANCE;
+export const MOCK_ADMIN_LEAVE_REQUESTS = INITIAL_ADMIN_LEAVE_REQUESTS;
+export const MOCK_ADMIN_PAYROLL = INITIAL_ADMIN_PAYROLL;
+export const MOCK_ADMIN_REPORT_SUMMARY = INITIAL_ADMIN_REPORT_SUMMARY;
+
+export function getAdminEmployees(): AdminEmployee[] {
+  if (typeof window === 'undefined') return INITIAL_ADMIN_EMPLOYEES;
+  const raw = localStorage.getItem('dayflow_registered_employees');
+  if (!raw) return INITIAL_ADMIN_EMPLOYEES;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return INITIAL_ADMIN_EMPLOYEES;
+  }
+}
