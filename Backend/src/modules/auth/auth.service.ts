@@ -33,7 +33,7 @@ export class AuthService {
       .from('users')
       .select('id, email')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
     if (existingUser) {
       throw new AppError(400, ErrorCodes.EMAIL_ALREADY_EXISTS, 'An account with this email already exists');
@@ -72,7 +72,7 @@ export class AuthService {
 
     if (userError || !newUser) {
       console.error('[Signup User Error]:', userError);
-      throw new AppError(500, ErrorCodes.DATABASE_ERROR, 'Failed to create user record');
+      throw new AppError(500, ErrorCodes.DATABASE_ERROR, userError?.message || 'Failed to create user record');
     }
 
     // 6. Insert Profile
@@ -97,28 +97,34 @@ export class AuthService {
     }
 
     // 7. Initialize Leave Balances (24 paid days, 7 sick days, 0 unpaid days)
-    await supabaseAdmin.from('leave_balances').insert({
-      user_id: newUser.id,
-      paid_days_available: 24,
-      sick_days_available: 7,
-      unpaid_days_taken: 0,
-    });
+    try {
+      await supabaseAdmin.from('leave_balances').insert({
+        user_id: newUser.id,
+        paid_days_available: 24,
+        sick_days_available: 7,
+        unpaid_days_taken: 0,
+      });
+    } catch (lbErr) {
+      console.warn('[Signup Leave Balances Warn]:', lbErr);
+    }
 
     // 8. Initialize In-App Notification
-    await supabaseAdmin.from('notifications').insert({
-      user_id: newUser.id,
-      title: 'Welcome to Dayflow HRMS',
-      message: `Your account has been registered with Login ID: ${loginId}. Please verify your email.`,
-      type: 'info',
-      read: false,
-    });
-
-    // 9. Dispatch Brevo Email
     try {
-      await sendVerificationEmail(email, data.name, loginId, verificationToken);
-    } catch (mailErr) {
-      console.error('[Brevo SMTP Error]:', mailErr);
+      await supabaseAdmin.from('notifications').insert({
+        user_id: newUser.id,
+        title: 'Welcome to Dayflow HRMS',
+        message: `Your account has been registered with Login ID: ${loginId}. Please verify your email.`,
+        type: 'info',
+        read: false,
+      });
+    } catch (notifErr) {
+      console.warn('[Signup Notification Warn]:', notifErr);
     }
+
+    // 9. Dispatch Brevo Email (Non-blocking)
+    sendVerificationEmail(email, data.name, loginId, verificationToken).catch((mailErr) => {
+      console.error('[Brevo SMTP Error]:', mailErr);
+    });
 
     return {
       userId: newUser.id,
