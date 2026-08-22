@@ -1,0 +1,8 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { PayrollPage } from '../employee/pages/PayrollPage';
+---
+
+<Layout title="Payroll — Dayflow HRMS">
+  <PayrollPage client:only="react" />
+</Layout>

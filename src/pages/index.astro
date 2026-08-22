@@ -1,0 +1,430 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Dayflow HRMS — Enterprise Human Resource Platform"
+  description="Dayflow HRMS — The unified, minimalistic HR management platform for attendance, leave management, payroll processing, and employee self-service."
+>
+  <div class="min-h-screen bg-[#ffffff] flex flex-col font-sans text-[#1c1e21] selection:bg-[#0064e0]/10 selection:text-[#0a1317]">
+
+    <!-- ── Navigation Header ────────────────────────────────────────────── -->
+    <header class="sticky top-0 z-40 w-full bg-[#ffffff]/90 backdrop-blur-md border-b border-[#dee3e9]">
+      <div class="max-w-[1280px] mx-auto px-6 lg:px-8 flex items-center justify-between h-16">
+        
+        <!-- Brand Logo -->
+        <a href="/" class="flex items-center gap-2.5 group" aria-label="Dayflow HRMS Homepage">
+          <img
+            src="/logo.jpg"
+            alt="Dayflow HRMS Logo"
+            class="w-8 h-8 rounded-[8px] object-cover border border-[#dee3e9] shadow-2xs transition-transform group-hover:scale-105"
+          />
+          <div class="flex items-baseline gap-1.5">
+            <span class="font-heading text-[20px] font-[600] uppercase tracking-[0.02em] text-[#0a1317]">Dayflow</span>
+            <span class="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8595a4]">HRMS</span>
+          </div>
+        </a>
+
+        <!-- Desktop Navigation Links -->
+        <nav class="hidden md:flex items-center gap-8" aria-label="Landing page links">
+          <a href="#features" class="text-[14px] font-bold text-[#5d6c7b] hover:text-[#0a1317] transition-colors">Features</a>
+          <a href="#solutions" class="text-[14px] font-bold text-[#5d6c7b] hover:text-[#0a1317] transition-colors">Solutions</a>
+          <a href="#workflows" class="text-[14px] font-bold text-[#5d6c7b] hover:text-[#0a1317] transition-colors">Workflows</a>
+          <a href="#security" class="text-[14px] font-bold text-[#5d6c7b] hover:text-[#0a1317] transition-colors">Security</a>
+        </nav>
+
+        <!-- Single Unified Sign In / Sign Up Button -->
+        <div>
+          <a
+            href="/login"
+            class="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-[#000000] text-white text-[13px] font-bold leading-[1.43] tracking-[-0.14px] hover:bg-[#444950] transition-colors min-h-[40px]"
+          >
+            Sign In / Sign Up &rarr;
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1">
+
+      <!-- ── Hero Section ─────────────────────────────────────────────────── -->
+      <section class="relative pt-20 sm:pt-28 pb-20 px-6 lg:px-8 border-b border-[#dee3e9] bg-[#ffffff]">
+        <div class="max-w-[1040px] mx-auto text-center space-y-8">
+          
+          <!-- Category Badge -->
+          <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#f1f4f7] border border-[#dee3e9]">
+            <span class="text-[12px] font-bold text-[#0a1317] tracking-[-0.14px]">
+              Unified HR &amp; Workforce Management Platform
+            </span>
+          </div>
+
+          <!-- Hero Headline (Oswald font-heading) -->
+          <h1 class="font-heading text-[44px] sm:text-[62px] lg:text-[68px] font-[600] uppercase tracking-[0.02em] leading-[1.08] text-[#0a1317] max-w-[920px] mx-auto">
+            Workforce operations,<br class="hidden sm:block" /> streamlined and simplified.
+          </h1>
+
+          <!-- Subtitle Copy -->
+          <p class="text-[17px] sm:text-[18px] font-normal leading-[1.50] tracking-[-0.16px] text-[#5d6c7b] max-w-[580px] mx-auto">
+            Automate attendance tracking, structure time-off requests, process monthly payroll, and access real-time organization analytics in one clean interface.
+          </p>
+
+          <!-- Single Primary Sign In Button -->
+          <div class="flex items-center justify-center pt-2">
+            <a
+              href="/login"
+              class="inline-flex items-center justify-center gap-2 px-[36px] py-[16px] rounded-full bg-[#000000] text-white text-[15px] font-bold leading-[1.43] tracking-[-0.14px] transition-all hover:bg-[#444950] active:scale-[0.98] min-h-[52px] shadow-sm"
+            >
+              <span>Sign In to Dayflow</span>
+              <span>&rarr;</span>
+            </a>
+          </div>
+
+          <!-- Performance Metrics -->
+          <div class="pt-12 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-[840px] mx-auto border-t border-[#dee3e9]">
+            <div class="space-y-1">
+              <p class="font-heading text-[28px] font-[600] text-[#0a1317]">100%</p>
+              <p class="text-[12px] font-bold text-[#8595a4] uppercase tracking-[0.04em]">Role-Based Security</p>
+            </div>
+            <div class="space-y-1">
+              <p class="font-heading text-[28px] font-[600] text-[#0a1317]">&lt; 1 sec</p>
+              <p class="text-[12px] font-bold text-[#8595a4] uppercase tracking-[0.04em]">Session Check-in</p>
+            </div>
+            <div class="space-y-1">
+              <p class="font-heading text-[28px] font-[600] text-[#0a1317]">Zero</p>
+              <p class="text-[12px] font-bold text-[#8595a4] uppercase tracking-[0.04em]">Paperwork Lag</p>
+            </div>
+            <div class="space-y-1">
+              <p class="font-heading text-[28px] font-[600] text-[#0a1317]">Real-time</p>
+              <p class="text-[12px] font-bold text-[#8595a4] uppercase tracking-[0.04em]">HR Analytics</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ── System Solutions Section ──────────────────────────────────────── -->
+      <section id="solutions" class="py-20 px-6 lg:px-8 max-w-[1280px] mx-auto space-y-12">
+        <div class="text-center space-y-3 max-w-[600px] mx-auto">
+          <p class="text-[12px] font-bold uppercase tracking-[0.08em] text-[#8595a4]">Architecture</p>
+          <h2 class="font-heading text-[32px] sm:text-[40px] font-[600] uppercase tracking-[0.02em] leading-[1.15] text-[#0a1317]">
+            Role-tailored experience for every team member
+          </h2>
+          <p class="text-[15px] text-[#5d6c7b]">
+            A single authenticated login routes employees and HR managers to their dedicated environment.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          
+          <!-- Employee Portal Capability Card -->
+          <div class="bg-[#ffffff] rounded-[24px] border border-[#dee3e9] p-8 sm:p-10 flex flex-col justify-between space-y-8">
+            <div class="space-y-6">
+              <div class="flex items-center justify-between">
+                <span class="text-[12px] font-bold uppercase tracking-[0.06em] text-[#8595a4]">Employee Surface</span>
+                <span class="px-3 py-1 rounded-full bg-[#e6f4ea] text-[12px] font-bold text-[#1a7f3c]">Self-Service</span>
+              </div>
+
+              <div class="space-y-2">
+                <h3 class="font-heading text-[24px] sm:text-[26px] font-[600] uppercase tracking-[0.02em] text-[#0a1317]">Employee Portal</h3>
+                <p class="text-[15px] leading-[1.5] text-[#5d6c7b]">
+                  Personal dashboard for real-time check-in/out, digital employee ID badges, structured leave applications, and instant payslip PDF downloads.
+                </p>
+              </div>
+
+              <div class="space-y-3 pt-2 border-t border-[#dee3e9]">
+                {[
+                  'Instant one-click attendance check-in & shift log',
+                  'Leave request submission with document attachment',
+                  'Itemized salary breakdown & downloadable payslips',
+                  'Team colleague directory & contact access',
+                ].map((item) => (
+                  <div class="flex items-center gap-3 text-[14px] font-medium text-[#1c1e21]">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#0064e0] flex-shrink-0"></span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div class="pt-4">
+              <a
+                href="/login"
+                class="inline-flex items-center gap-2 text-[14px] font-bold text-[#0a1317] hover:underline"
+              >
+                <span>Access Employee Portal</span>
+                <span>&rarr;</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Admin Console Capability Card -->
+          <div class="bg-[#0a1317] text-white rounded-[24px] p-8 sm:p-10 flex flex-col justify-between space-y-8">
+            <div class="space-y-6">
+              <div class="flex items-center justify-between">
+                <span class="text-[12px] font-bold uppercase tracking-[0.06em] text-[#8595a4]">Admin &amp; HR Surface</span>
+                <span class="px-3 py-1 rounded-full bg-white/15 text-[12px] font-bold text-white">Governance</span>
+              </div>
+
+              <div class="space-y-2">
+                <h3 class="font-heading text-[24px] sm:text-[26px] font-[600] uppercase tracking-[0.02em] text-white">Admin &amp; HR Console</h3>
+                <p class="text-[15px] leading-[1.5] text-[#8595a4]">
+                  Complete operational governance for HR officers. Approve or reject leave applications, track company attendance, and configure payroll settings.
+                </p>
+              </div>
+
+              <div class="space-y-3 pt-2 border-t border-white/10">
+                {[
+                  'Organization-wide employee record management',
+                  'Structured leave approval pipeline with HR notes',
+                  'Real-time daily attendance monitoring & status logs',
+                  'Payroll processing, gross-to-net tracking & reports',
+                ].map((item) => (
+                  <div class="flex items-center gap-3 text-[14px] font-medium text-white/90">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#31a24c] flex-shrink-0"></span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div class="pt-4">
+              <a
+                href="/login"
+                class="inline-flex items-center gap-2 text-[14px] font-bold text-white hover:underline"
+              >
+                <span>Access Admin Console</span>
+                <span>&rarr;</span>
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ── Capabilities Grid Section ─────────────────────────────────────── -->
+      <section id="features" class="py-20 px-6 lg:px-8 bg-[#f1f4f7] border-y border-[#dee3e9]">
+        <div class="max-w-[1280px] mx-auto space-y-12">
+          
+          <div class="text-center space-y-3 max-w-[640px] mx-auto">
+            <p class="text-[12px] font-bold uppercase tracking-[0.08em] text-[#8595a4]">System Features</p>
+            <h2 class="font-heading text-[32px] sm:text-[40px] font-[600] uppercase tracking-[0.02em] leading-[1.15] text-[#0a1317]">
+              Built for precision, speed, and clarity
+            </h2>
+            <p class="text-[15px] text-[#5d6c7b]">
+              Every tool is engineered for enterprise performance without unnecessary complexity.
+            </p>
+          </div>
+
+          <!-- 6-Up Clean Feature Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                num: '01',
+                title: 'Attendance Management',
+                desc: 'Real-time session recording, auto-calculated shift hours, daily logs, and visual presence badges.',
+              },
+              {
+                num: '02',
+                title: 'Leave Workflows',
+                desc: 'Categorized leave balances, file attachments, and formal HR approval pipelines with comments.',
+              },
+              {
+                num: '03',
+                title: 'Payroll Processing',
+                desc: 'Gross pay, deduction calculations, monthly net take-home computation, and instant PDF payslip downloads.',
+              },
+              {
+                num: '04',
+                title: 'Employee Directory',
+                desc: 'Department index, fast search, role mapping, and interactive digital employee badges.',
+              },
+              {
+                num: '05',
+                title: 'Role-Based Security',
+                desc: 'Isolated routing between Employee and Admin surfaces preventing unauthorized data access.',
+              },
+              {
+                num: '06',
+                title: 'HR Analytics Reports',
+                desc: 'Visual summaries for monthly attendance rates, leave utilization trends, and payroll budgets.',
+              },
+            ].map(({ num, title, desc }) => (
+              <div class="bg-[#ffffff] rounded-[24px] border border-[#dee3e9] p-7 space-y-3 hover:border-[#ced0d4] transition-all">
+                <span class="text-[14px] font-mono font-bold text-[#0064e0]">{num}</span>
+                <h3 class="font-heading text-[18px] font-[600] uppercase tracking-[0.02em] text-[#0a1317]">{title}</h3>
+                <p class="text-[14px] leading-[1.5] text-[#5d6c7b]">{desc}</p>
+              </div>
+            ))}
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ── Workflows Section ─────────────────────────────────────────────── -->
+      <section id="workflows" class="py-20 px-6 lg:px-8 max-w-[1280px] mx-auto space-y-12">
+        <div class="text-center space-y-3 max-w-[600px] mx-auto">
+          <p class="text-[12px] font-bold uppercase tracking-[0.08em] text-[#8595a4]">Simplicity First</p>
+          <h2 class="font-heading text-[32px] sm:text-[40px] font-[600] uppercase tracking-[0.02em] leading-[1.15] text-[#0a1317]">
+            How Dayflow operates
+          </h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {[
+            {
+              step: '1',
+              title: 'Single Sign In',
+              desc: 'Click Sign In and select your role (Employee or Admin) on the unified authentication page.',
+            },
+            {
+              step: '2',
+              title: 'Perform Tasks',
+              desc: 'Log shift attendance, submit leave requests, view payslips, or approve pending applications.',
+            },
+            {
+              step: '3',
+              title: 'Automated Sync',
+              desc: 'All records update instantly across attendance logs, leave balances, and administrative reports.',
+            },
+          ].map(({ step, title, desc }) => (
+            <div class="bg-[#ffffff] rounded-[24px] border border-[#dee3e9] p-8 space-y-3 text-center sm:text-left">
+              <div class="w-10 h-10 rounded-full bg-[#f1f4f7] text-[#0a1317] font-bold text-[16px] flex items-center justify-center font-mono">
+                {step}
+              </div>
+              <h3 class="font-heading text-[18px] font-[600] uppercase tracking-[0.02em] text-[#0a1317]">{title}</h3>
+              <p class="text-[14px] leading-[1.5] text-[#5d6c7b]">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- ── Security & Compliance Section ───────────────────────────────── -->
+      <section id="security" class="py-16 px-6 lg:px-8 bg-[#0a1317] text-white">
+        <div class="max-w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+          <div class="space-y-4">
+            <span class="text-[12px] font-bold uppercase tracking-[0.08em] text-[#8595a4]">Security &amp; Governance</span>
+            <h2 class="font-heading text-[32px] sm:text-[40px] font-[600] uppercase tracking-[0.02em] leading-[1.15] text-white">
+              Enterprise security built-in from day one.
+            </h2>
+            <p class="text-[15px] leading-[1.5] text-[#8595a4]">
+              Dayflow HRMS enforces complete authentication boundaries. Employee data is strictly protected, and administrative controls are restricted to verified HR officers.
+            </p>
+          </div>
+          <div class="bg-white/5 rounded-[24px] border border-white/10 p-8 space-y-4">
+            <div class="space-y-3">
+              <div class="flex items-center gap-3">
+                <span class="w-2 h-2 rounded-full bg-[#31a24c]"></span>
+                <span class="text-[14px] font-bold text-white">Role-Based Access Control (RBAC)</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="w-2 h-2 rounded-full bg-[#31a24c]"></span>
+                <span class="text-[14px] font-bold text-white">Secure Encrypted Session Tokens</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="w-2 h-2 rounded-full bg-[#31a24c]"></span>
+                <span class="text-[14px] font-bold text-white">Audit Trails for Leave &amp; Payroll Changes</span>
+              </div>
+            </div>
+            <div class="pt-4 border-t border-white/10">
+              <a href="/login" class="inline-flex items-center gap-2 text-[14px] font-bold text-white hover:underline">
+                <span>Sign In to Secure Portal</span>
+                <span>&rarr;</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Footer CTA Section ────────────────────────────────────────────── -->
+      <section class="py-16 px-6 lg:px-8 bg-[#ffffff] border-b border-[#dee3e9]">
+        <div class="max-w-[800px] mx-auto text-center space-y-6">
+          <h2 class="font-heading text-[32px] sm:text-[40px] font-[600] uppercase tracking-[0.02em] leading-[1.15] text-[#0a1317]">
+            Ready to streamline your HR operations?
+          </h2>
+          <p class="text-[15px] text-[#5d6c7b] max-w-[480px] mx-auto">
+            Get started with Dayflow HRMS in seconds. Sign in to your portal to begin.
+          </p>
+          <div class="pt-2">
+            <a
+              href="/login"
+              class="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-[#000000] text-white text-[14px] font-bold hover:bg-[#444950] transition-colors min-h-[48px]"
+            >
+              Sign In to Dayflow Portal &rarr;
+            </a>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ── Professional Footer Region ───────────────────────────────────── -->
+    <footer class="w-full bg-[#ffffff] text-[#1c1e21]">
+      <div class="max-w-[1280px] mx-auto px-6 lg:px-8 py-12 space-y-10">
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+          
+          <!-- Col 1: Brand -->
+          <div class="space-y-3">
+            <div class="flex items-center gap-2">
+              <img
+                src="/logo.jpg"
+                alt="Dayflow HRMS Logo"
+                class="w-7 h-7 rounded-[6px] object-cover border border-[#dee3e9] shadow-2xs"
+              />
+              <span class="font-heading text-[16px] font-[600] uppercase tracking-[0.02em] text-[#0a1317]">Dayflow HRMS</span>
+            </div>
+            <p class="text-[13px] text-[#5d6c7b] leading-[1.5]">
+              Unified Human Resource &amp; Workforce Management System.
+            </p>
+          </div>
+
+          <!-- Col 2: Navigation -->
+          <div class="space-y-2">
+            <p class="text-[13px] font-bold uppercase tracking-[0.04em] text-[#0a1317]">Navigation</p>
+            <ul class="space-y-2 text-[13px] text-[#5d6c7b]">
+              <li><a href="/login" class="hover:text-[#0a1317] transition-colors">Sign In</a></li>
+              <li><a href="#features" class="hover:text-[#0a1317] transition-colors">Features</a></li>
+              <li><a href="#solutions" class="hover:text-[#0a1317] transition-colors">Solutions</a></li>
+              <li><a href="#workflows" class="hover:text-[#0a1317] transition-colors">Workflows</a></li>
+            </ul>
+          </div>
+
+          <!-- Col 3: Employee Surface -->
+          <div class="space-y-2">
+            <p class="text-[13px] font-bold uppercase tracking-[0.04em] text-[#0a1317]">Employee Portal</p>
+            <ul class="space-y-2 text-[13px] text-[#5d6c7b]">
+              <li><a href="/dashboard" class="hover:text-[#0a1317] transition-colors">Dashboard</a></li>
+              <li><a href="/attendance" class="hover:text-[#0a1317] transition-colors">Attendance Log</a></li>
+              <li><a href="/leave" class="hover:text-[#0a1317] transition-colors">Time Off Requests</a></li>
+              <li><a href="/payroll" class="hover:text-[#0a1317] transition-colors">Payslips &amp; Salary</a></li>
+            </ul>
+          </div>
+
+          <!-- Col 4: Admin Surface -->
+          <div class="space-y-2">
+            <p class="text-[13px] font-bold uppercase tracking-[0.04em] text-[#0a1317]">Admin Console</p>
+            <ul class="space-y-2 text-[13px] text-[#5d6c7b]">
+              <li><a href="/admin/dashboard" class="hover:text-[#0a1317] transition-colors">HR Dashboard</a></li>
+              <li><a href="/admin/employees" class="hover:text-[#0a1317] transition-colors">Employee Records</a></li>
+              <li><a href="/admin/leave" class="hover:text-[#0a1317] transition-colors">Leave Approval</a></li>
+              <li><a href="/admin/payroll" class="hover:text-[#0a1317] transition-colors">Payroll Processing</a></li>
+            </ul>
+          </div>
+
+        </div>
+
+        <!-- Sub-footer copyright -->
+        <div class="pt-8 border-t border-[#dee3e9] flex flex-col sm:flex-row items-center justify-between gap-4 text-[12px] text-[#8595a4]">
+          <p>&copy; 2026 Dayflow HRMS. All rights reserved.</p>
+          <div class="flex gap-6">
+            <a href="#" class="hover:text-[#0a1317] transition-colors">Privacy Policy</a>
+            <a href="#" class="hover:text-[#0a1317] transition-colors">Terms of Service</a>
+            <a href="#" class="hover:text-[#0a1317] transition-colors">Security Overview</a>
+          </div>
+        </div>
+
+      </div>
+    </footer>
+
+  </div>
+</Layout>

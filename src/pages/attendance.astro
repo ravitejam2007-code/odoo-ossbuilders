@@ -1,0 +1,8 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { AttendancePage } from '../employee/pages/AttendancePage';
+---
+
+<Layout title="Attendance — Dayflow HRMS">
+  <AttendancePage client:only="react" />
+</Layout>

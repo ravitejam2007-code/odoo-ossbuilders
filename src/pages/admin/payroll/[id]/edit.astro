@@ -1,0 +1,17 @@
+---
+import Layout from '../../../../layouts/Layout.astro';
+import { PayrollEditPage } from '../../../../admin/pages/PayrollEditPage';
+import { MOCK_ADMIN_EMPLOYEES } from '../../../../admin/api/mockData';
+
+export function getStaticPaths() {
+  return MOCK_ADMIN_EMPLOYEES.map((emp) => ({
+    params: { id: emp.id },
+  }));
+}
+
+const { id } = Astro.params;
+---
+
+<Layout title="Configure Wage — Dayflow Admin HRMS">
+  <PayrollEditPage client:only="react" id={id || ''} />
+</Layout>

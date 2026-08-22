@@ -1,0 +1,8 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { LoginPage } from '../../admin/pages/LoginPage';
+---
+
+<Layout title="Admin Sign In — Dayflow HRMS">
+  <LoginPage client:only="react" />
+</Layout>

@@ -1,0 +1,8 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { ProfilePage } from '../../employee/pages/ProfilePage';
+---
+
+<Layout title="My Profile — Dayflow HRMS">
+  <ProfilePage client:only="react" />
+</Layout>

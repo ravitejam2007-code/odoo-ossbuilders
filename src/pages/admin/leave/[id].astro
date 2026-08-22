@@ -1,0 +1,17 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { LeaveDetailPage } from '../../../admin/pages/LeaveDetailPage';
+import { MOCK_ADMIN_LEAVE_REQUESTS } from '../../../admin/api/mockData';
+
+export function getStaticPaths() {
+  return MOCK_ADMIN_LEAVE_REQUESTS.map((req) => ({
+    params: { id: req.id },
+  }));
+}
+
+const { id } = Astro.params;
+---
+
+<Layout title="Leave Request Review — Dayflow Admin HRMS">
+  <LeaveDetailPage client:only="react" id={id || ''} />
+</Layout>
