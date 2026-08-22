@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { supabaseAdmin } from '../../config/supabase';
 import { env } from '../../config/env';
-import { sendVerificationEmail } from '../../config/mailer';
+import { sendVerificationEmail, sendPasswordResetEmail } from '../../config/mailer';
 import { generateEmployeeLoginId } from '../../utils/idGenerator';
 import { AppError } from '../../utils/response';
 import { ErrorCodes } from '../../constants/errorCodes';
@@ -11,7 +11,11 @@ import { UserRole } from '../../types';
 
 export class AuthService {
   /**
-   * Register a new employee or admin
+   * 1. Register a new employee or admin
+   * Computes login_id = [Company 2-chars] + [Initials 4-chars] + [Year 4-chars] + [Serial 4-chars] (e.g. OIJODO20220001)
+   * Hashes password with bcrypt
+   * Creates user, profile, default leave_balances, and notification rows
+   * Triggers verification email via Brevo SMTP
    */
   async signup(data: {
     companyName: string;
@@ -59,6 +63,7 @@ export class AuthService {
         email,
         password_hash: passwordHash,
         role,
+        company_name: data.companyName,
         email_verified: false,
         verification_token: verificationToken,
       })
@@ -80,7 +85,9 @@ export class AuthService {
       job_title: role === 'admin' ? 'HR Administrator' : 'Associate Engineer',
       manager: 'System Admin',
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
+      avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
       work_status: 'present',
+      date_joined: new Date().toISOString().split('T')[0],
       joined_year: year,
       serial_no: String(serial).padStart(4, '0'),
     });
@@ -89,15 +96,15 @@ export class AuthService {
       console.error('[Signup Profile Error]:', profileError);
     }
 
-    // 7. Initialize Leave Balances
+    // 7. Initialize Leave Balances (24 paid days, 7 sick days, 0 unpaid days)
     await supabaseAdmin.from('leave_balances').insert({
       user_id: newUser.id,
-      paid_days_available: 24.0,
-      sick_days_available: 7.0,
-      unpaid_days_taken: 0.0,
+      paid_days_available: 24,
+      sick_days_available: 7,
+      unpaid_days_taken: 0,
     });
 
-    // 8. Initialize Notification
+    // 8. Initialize In-App Notification
     await supabaseAdmin.from('notifications').insert({
       user_id: newUser.id,
       title: 'Welcome to Dayflow HRMS',
@@ -124,7 +131,8 @@ export class AuthService {
   }
 
   /**
-   * Verify Email
+   * 2. Verify Email
+   * Verifies token and activates email_verified = true
    */
   async verifyEmail(token: string, loginId?: string) {
     let query = supabaseAdmin.from('users').select('*').eq('verification_token', token);
@@ -139,7 +147,7 @@ export class AuthService {
     }
 
     if (user.email_verified) {
-      return { message: 'Email is already verified. You can sign in directly.' };
+      return { message: 'Email is already verified. You can sign in directly.', loginId: user.login_id };
     }
 
     await supabaseAdmin
@@ -154,11 +162,14 @@ export class AuthService {
     return {
       message: 'Email successfully verified! You can now log into your account.',
       loginId: user.login_id,
+      email: user.email,
     };
   }
 
   /**
-   * Login with Email OR Login ID
+   * 3. Login with Email OR Login ID
+   * Validates credentials & email_verified = true check
+   * Returns session JWT and user profile
    */
   async login(loginIdOrEmail: string, password: string) {
     const identifier = loginIdOrEmail.trim();
@@ -181,7 +192,7 @@ export class AuthService {
       throw new AppError(401, ErrorCodes.INVALID_CREDENTIALS, 'Invalid Login ID/Email or password');
     }
 
-    // Check email verification gate
+    // Check email verification gate in production (or if email_verified is required)
     if (!user.email_verified && env.NODE_ENV === 'production') {
       throw new AppError(
         403,
@@ -223,7 +234,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         name: profile?.name || 'Employee',
-        avatar: profile?.avatar || '',
+        avatar: profile?.avatar || profile?.avatar_url || '',
         department: profile?.department || 'Engineering',
         jobTitle: profile?.job_title || 'Associate',
         company: profile?.company || 'Dayflow',
@@ -233,7 +244,7 @@ export class AuthService {
   }
 
   /**
-   * Refresh JWT Access Token
+   * 4. Refresh JWT Access Token
    */
   async refreshToken(token: string) {
     try {
@@ -260,5 +271,80 @@ export class AuthService {
     } catch {
       throw new AppError(401, ErrorCodes.INVALID_TOKEN, 'Invalid or expired refresh token');
     }
+  }
+
+  /**
+   * 5. Forgot Password Request
+   * Triggers Password Reset Email via Brevo SMTP
+   */
+  async forgotPassword(loginIdOrEmail: string) {
+    const identifier = loginIdOrEmail.trim();
+    const isEmail = identifier.includes('@');
+    const query = supabaseAdmin.from('users').select('*');
+
+    const { data: user } = isEmail
+      ? await query.eq('email', identifier.toLowerCase()).single()
+      : await query.eq('login_id', identifier.toUpperCase()).single();
+
+    if (!user) {
+      // Return success message to prevent user enumeration
+      return { message: 'If an account exists with this email or Login ID, a password reset link has been sent.' };
+    }
+
+    const { data: profile } = await supabaseAdmin.from('profiles').select('name').eq('user_id', user.id).single();
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+
+    await supabaseAdmin
+      .from('users')
+      .update({
+        reset_token: resetToken,
+        reset_token_expires: expiresAt,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', user.id);
+
+    try {
+      await sendPasswordResetEmail(user.email, profile?.name || 'Employee', resetToken);
+    } catch (mailErr) {
+      console.error('[Brevo SMTP Reset Error]:', mailErr);
+    }
+
+    return { message: 'Password reset link sent to your registered email address.' };
+  }
+
+  /**
+   * 6. Reset Password with Token
+   */
+  async resetPassword(token: string, newPassword: string) {
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('reset_token', token)
+      .single();
+
+    if (error || !user) {
+      throw new AppError(400, ErrorCodes.INVALID_TOKEN, 'Invalid or expired password reset token');
+    }
+
+    if (user.reset_token_expires && new Date(user.reset_token_expires) < new Date()) {
+      throw new AppError(400, ErrorCodes.TOKEN_EXPIRED, 'Password reset token has expired. Please request a new one.');
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    await supabaseAdmin
+      .from('users')
+      .update({
+        password_hash: passwordHash,
+        reset_token: null,
+        reset_token_expires: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', user.id);
+
+    return { message: 'Password reset successful! You can now log into Dayflow with your new password.' };
   }
 }

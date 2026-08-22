@@ -47,4 +47,24 @@ export class AuthController {
   async logout(_req: Request, res: Response) {
     return sendSuccess(res, { message: 'Logged out successfully' }, 200);
   }
+
+  async forgotPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { loginIdOrEmail } = req.body;
+      const result = await authService.forgotPassword(loginIdOrEmail);
+      return sendSuccess(res, result, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resetPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { token, newPassword } = req.body;
+      const result = await authService.resetPassword(token, newPassword);
+      return sendSuccess(res, result, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
