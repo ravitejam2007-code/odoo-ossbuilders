@@ -1,0 +1,17 @@
+---
+import { ProfilePage } from '../../components/pages/ProfilePage';
+import '../../styles/global.css';
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Profile — Dayflow HRMS</title>
+    <meta name="description" content="View employee profile, work details, private info, and read-only salary structure." />
+  </head>
+  <body>
+    <ProfilePage client:only="react" />
+  </body>
+</html>

@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+Employee/node_modules/
+
+# Production builds & Astro output
+dist/
+Employee/dist/
+.astro/
+Employee/.astro/
+
+# IDE & OS files
+.vscode/
+.antigravity/
+.gemini/
+.DS_Store
+Thumbs.db
+
+# Logs & temp files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

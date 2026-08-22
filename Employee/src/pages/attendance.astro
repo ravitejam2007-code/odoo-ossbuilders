@@ -1,0 +1,17 @@
+---
+import { AttendancePage } from '../components/pages/AttendancePage';
+import '../styles/global.css';
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Attendance — Dayflow HRMS</title>
+    <meta name="description" content="View day-wise check-in and check-out logs and working hours." />
+  </head>
+  <body>
+    <AttendancePage client:only="react" />
+  </body>
+</html>
