@@ -1,152 +1,143 @@
-# Dayflow
+# Dayflow HRMS 🚀
 
-**Every workday, perfectly aligned.**
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-odoo--ossbuilders.vercel.app-brightgreen?style=for-the-badge&logo=vercel)](https://odoo-ossbuilders.vercel.app)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-blue?style=for-the-badge&logo=github)](https://github.com/ravitejam2007-code/odoo-ossbuilders.git)
 
-Dayflow is a role-based Human Resource Management System (HRMS) that digitizes core HR operations — employee onboarding, profile management, attendance tracking, leave management, and payroll visibility — for small-to-mid-sized teams.
-
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [Available Scripts](#available-scripts)
-- [Documentation](#documentation)
-- [Team](#team)
-- [Roadmap](#roadmap)
+> **Every workday, perfectly aligned.**  
+> Dayflow is a modern, role-based Human Resource Management System (HRMS) that streamlines core HR operations — employee onboarding, directory & profile management, attendance tracking, leave requests & approval workflows, and payroll visibility.
 
 ---
 
-## Overview
+## 🌐 Live Application
 
-Dayflow replaces spreadsheet- and paper-based HR tracking with a single web app shared by employees and HR admins.
+- **Production URL**: [https://odoo-ossbuilders.vercel.app](https://odoo-ossbuilders.vercel.app)
+- **Repository**: [https://github.com/ravitejam2007-code/odoo-ossbuilders.git](https://github.com/ravitejam2007-code/odoo-ossbuilders.git)
 
-**Core modules:**
-- Secure authentication (sign up / sign in, email verification, role-based access)
-- Role-based dashboards (Admin vs Employee)
-- Employee profile management
-- Attendance tracking (check-in/out, daily & weekly views)
-- Leave & time-off management with an approval workflow
-- Payroll/salary visibility (employee read-only, admin full control)
-- Notifications and analytics/reports (Phase 1.5)
+---
 
-Full requirements are in [`docs/PRD.md`](docs/PRD.md).
+## ✨ Features
 
-## Tech Stack
+### 👤 Employee Portal
+- **Interactive Dashboard**: Real-time overview of attendance status, leave balances, upcoming holidays, and team announcements.
+- **Attendance Management**: Single-click check-in and check-out with automatic work hour tracking and attendance history.
+- **Leave Management**: Apply for leaves (Casual, Sick, Earned), track real-time approval status, and view leave allowance balances.
+- **Salary & Payroll**: View monthly salary slips, breakdown of allowances, deductions, and tax calculations.
+- **Profile & Settings**: View and manage personal details, contact info, emergency contacts, and job details.
 
-| Layer | Choice |
-|---|---|
-| Frontend | React 18 + TypeScript + Vite, Tailwind CSS, TanStack Query, Zustand |
-| Backend | Node.js + Express + TypeScript, Prisma ORM |
-| Database | PostgreSQL(Supabase) |
-| Auth | JWT (access + refresh tokens), bcrypt |
-| Email | Bervo Email Service and Nodemailer|
-| Hosting | Supabase (API), Vercel or Netlify (frontend) |
-| CI | GitHub Actions |
+### 🛡️ Admin & HR Management
+- **Company Overview**: Global HR metrics, daily workforce attendance percentage, pending approvals, and active headcounts.
+- **Employee Directory**: Complete employee management (add, edit, deactivate, assign roles & departments).
+- **Attendance Monitoring**: Organization-wide logs, overtime tracking, and absence alerts.
+- **Leave Approvals**: Review, approve, or reject employee leave applications with remarks.
+- **Payroll Management**: Generate and manage salary structures and payroll batches.
 
-Full architecture and rationale in [`docs/TRD.md`](docs/TRD.md).
+---
 
-## Project Structure
+## 🛠️ Tech Stack
+
+### Frontend
+- **Framework**: [Astro 5](https://astro.build/) + [React 19](https://react.dev/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **State & Data Fetching**: [TanStack Query](https://tanstack.com/query)
+- **Icons & UI**: [Lucide React](https://lucide.dev/), [Framer Motion](https://www.framer.com/motion/)
+- **Language**: TypeScript
+
+### Backend & Database
+- **Runtime / Framework**: Node.js, Express, TypeScript
+- **Database**: PostgreSQL hosted on [Supabase](https://supabase.com/)
+- **Authentication**: JWT (Access & Refresh Tokens) + bcrypt
+- **Email Service**: Brevo & Nodemailer
+
+---
+
+## 📁 Project Structure
 
 ```
-dayflow/
-├─ apps/
-│  ├─ web/                # React + Vite frontend
-│  └─ api/                # Express + Prisma backend
-├─ packages/
-│  └─ shared-types/        # Zod schemas / TS types shared by web + api
-├─ docs/                   # PRD, TRD, Navigation Plan, Team Roles, Integration Guide
-└─ .github/workflows/      # CI
+odoo-ossbuilders/
+├─ Backend/                 # Express + TypeScript + Supabase Backend API
+│  ├─ src/                  # API routes, controllers, middleware, services
+│  ├─ sql/                  # Supabase database schema & migrations
+│  └─ package.json
+├─ docs/                    # PRD, TRD, Navigation Plan, and Architecture guides
+├─ public/                  # Static assets and media
+├─ src/
+│  ├─ admin/               # Admin views, components, and hooks
+│  ├─ employee/            # Employee views, components, and API client
+│  ├─ layouts/             # Astro base layouts
+│  ├─ pages/               # Astro file-based routing
+│  ├─ shared/              # Shared types, UI components, and mock data
+│  └─ styles/              # Global CSS & Tailwind styling
+├─ astro.config.mjs         # Astro configuration
+├─ tailwind.config.mjs      # Tailwind CSS theme & configuration
+└─ package.json             # Frontend dependencies & scripts
 ```
 
-## Getting Started
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 20+
-- pnpm (or npm/yarn — adjust commands below accordingly)
-- Supabase Database for Local and Production Environment 
+- **Node.js**: v20.x or higher
+- **npm** / **pnpm** / **yarn**
 
-### Setup
-
+### 1. Clone the Repository
 ```bash
-# 1. Clone the repo
-git clone https://github.com/<org>/dayflow.git
-cd dayflow
-
-# 2. Install dependencies
-pnpm install
-
-# 3. Start local PostgreSQL
-docker-compose up -d
-
-# 4. Copy env files and fill in values
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
-
-# 5. Run database migrations
-pnpm --filter api prisma migrate dev
-
-# 6. Start the dev servers
-pnpm dev
+git clone https://github.com/ravitejam2007-code/odoo-ossbuilders.git
+cd odoo-ossbuilders
 ```
 
-By default the API runs on `http://localhost:4000` and the frontend on `http://localhost:5173`.
+### 2. Frontend Setup & Run
+```bash
+# Install dependencies
+npm install
 
-## Environment Variables
+# Start development server
+npm run dev
+```
+The frontend will start at `http://localhost:3000`.
 
-See `.env.example` in each app for the full list. Key variables:
+### 3. Backend Setup & Run (Optional / Local API)
+```bash
+cd Backend
 
-| Variable | Where | Purpose |
-|---|---|---|
-| `DATABASE_URL` | `apps/api` | PostgreSQL connection string |
-| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | `apps/api` | Token signing keys |
-| `EMAIL_API_KEY` | `apps/api` | Resend/SES key for verification & notification emails |
-| `VITE_API_BASE_URL` | `apps/web` | API base URL the frontend calls |
+# Install backend dependencies
+npm install
 
-Never commit real secrets — staging/production values are set in the hosting platform's env config.
+# Configure environment variables
+cp .env.example .env
 
-## Available Scripts
+# Start backend development server
+npm run dev
+```
+
+---
+
+## 📜 Available Scripts
 
 | Command | Description |
 |---|---|
-| `pnpm dev` | Run frontend + backend in dev mode |
-| `pnpm build` | Build all apps for production |
-| `pnpm test` | Run unit + integration tests across the monorepo |
-| `pnpm lint` | Lint all packages |
-| `pnpm --filter api prisma studio` | Open Prisma Studio to inspect the DB |
-| `pnpm --filter api prisma migrate dev` | Run/create a new migration |
-
-## Documentation
-
-| Doc | Purpose |
-|---|---|
-| [`docs/PRD.md`](docs/PRD.md) | Product requirements — goals, user classes, functional & non-functional requirements |
-| [`docs/TRD.md`](docs/TRD.md) | Technical architecture, data model, API design, security |
-| [`docs/Navigation-Plan.md`](docs/Navigation-Plan.md) | Full route map and screen-level flows |
-| [`docs/Team-Roles.md`](docs/Team-Roles.md) | Team split by module (vertical slice) |
-| [`docs/Team-Roles-FrontendBackend.md`](docs/Team-Roles-FrontendBackend.md) | Alternative team split by frontend/backend layer |
-| [`docs/Integration-Guide.md`](docs/Integration-Guide.md) | Shared contracts between modules — auth guard, types, error format |
-
-> Note: the original spec links an Excalidraw board for design guidance. It's a JS-rendered canvas that hasn't been reconciled against `Navigation-Plan.md` yet — open it with guest access and flag any mismatches before UI work locks in.
-
-## Team
-
-Three-member team — see [`docs/Team-Roles.md`](docs/Team-Roles.md) or [`docs/Team-Roles-FrontendBackend.md`](docs/Team-Roles-FrontendBackend.md) for the current split (pick one model, don't run both).
-
-## Roadmap
-
-- [ ] Phase 0 — Auth, roles, DB schema, scaffolding
-- [ ] Phase 1 — Profile management, dashboards
-- [ ] Phase 2 — Attendance tracking
-- [ ] Phase 3 — Leave management + approvals
-- [ ] Phase 4 — Payroll visibility
-- [ ] Phase 1.5 — Notifications, analytics & reports
+| `npm run dev` | Starts the Astro development server on port 3000 |
+| `npm run build` | Builds the production bundle |
+| `npm run preview` | Previews the production build locally |
 
 ---
 
-## License
+## 📖 Documentation
 
-TBD
+- [`docs/PRD.md`](docs/PRD.md) - Product Requirements Document
+- [`docs/TRD.md`](docs/TRD.md) - Technical Requirements & Architecture
+- [`docs/Navigation-Plan.md`](docs/Navigation-Plan.md) - Routing & UI Flow
+- [`docs/Team-Roles-FrontendBackend.md`](docs/Team-Roles-FrontendBackend.md) - Team Responsibilities
+
+---
+
+## 👥 Contributors
+
+- **Team**: OSS Builders
+- **User**: [sanjaydsanjay](https://github.com/sanjaydsanjay) (`sanjaydsanjay042@gmail.com`)
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
