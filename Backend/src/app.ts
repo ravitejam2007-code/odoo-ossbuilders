@@ -27,7 +27,7 @@ app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (e.g. mobile apps, curl) or allowed origins
-      if (!origin || env.FRONTEND_URL.includes(origin) || env.NODE_ENV === 'development') {
+      if (!origin || env.FRONTEND_URL.some(url => origin === url || origin.startsWith(url)) || env.NODE_ENV === 'development') {
         callback(null, true);
       } else {
         callback(new Error('Blocked by CORS policy'));

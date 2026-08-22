@@ -6,7 +6,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 export const env = {
   PORT: parseInt(process.env.PORT || '4000', 10),
   NODE_ENV: process.env.NODE_ENV || 'development',
-  FRONTEND_URL: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : ['http://localhost:4321', 'http://localhost:5173', 'http://localhost:3000'],
+  FRONTEND_URL: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(s => s.trim()) : ['https://odoo-ossbuilders.vercel.app', 'http://localhost:4321', 'http://localhost:5173', 'http://localhost:3000'],
   
   // JWT
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'dayflow_default_dev_access_secret_2026',
