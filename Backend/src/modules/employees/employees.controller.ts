@@ -30,4 +30,14 @@ export class EmployeesController {
       next(error);
     }
   }
+
+  async updateEmployee(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = req.params.id as string;
+      const result = await employeesService.updateEmployee(id, req.body);
+      return sendSuccess(res, result, 200, 'Employee updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }

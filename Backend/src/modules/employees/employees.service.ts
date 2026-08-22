@@ -4,12 +4,13 @@ import { ErrorCodes } from '../../constants/errorCodes';
 
 export class EmployeesService {
   /**
-   * List all employees with search, department filtering, and pagination
+   * 1. GET /api/v1/employees (Admin)
+   * List all employees with search, department/role filtering, and pagination
    */
   async listEmployees(filters: { search?: string; department?: string; role?: string; page?: number; limit?: number }) {
     let query = supabaseAdmin
       .from('profiles')
-      .select('*, users!inner(id, login_id, email, role, email_verified)');
+      .select('*, users!inner(id, login_id, email, role, email_verified)', { count: 'exact' });
 
     if (filters.department) {
       query = query.eq('department', filters.department);
@@ -29,7 +30,7 @@ export class EmployeesService {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    const { data, error, count } = await query.range(from, to);
+    const { data, error, count } = await query.range(from, to).order('joined_year', { ascending: false });
 
     if (error) {
       console.error('[List Employees Error]:', error);
@@ -57,10 +58,11 @@ export class EmployeesService {
       salaryInfo: p.salary_info,
     }));
 
-    return { employees, count, page, limit };
+    return { employees, totalCount: count || employees.length, page, limit };
   }
 
   /**
+   * 2. GET /api/v1/employees/:id (Admin)
    * Get single employee comprehensive detail (profile, recent attendance, leave summary)
    */
   async getEmployeeById(userId: string) {
@@ -127,5 +129,55 @@ export class EmployeesService {
       leaveRequests: leaveRequests || [],
       leaveBalance: leaveBalance || { paid_days_available: 24, sick_days_available: 7, unpaid_days_taken: 0 },
     };
+  }
+
+  /**
+   * 3. PATCH /api/v1/employees/:id (Admin)
+   * Full edit including job title, department, role, salary info, work status, etc.
+   */
+  async updateEmployee(userId: string, data: any) {
+    const profileData: any = { updated_at: new Date().toISOString() };
+    const userData: any = { updated_at: new Date().toISOString() };
+
+    if (data.name !== undefined) profileData.name = data.name;
+    if (data.phone !== undefined) profileData.phone = data.phone;
+    if (data.company !== undefined) profileData.company = data.company;
+    if (data.department !== undefined) profileData.department = data.department;
+    if (data.jobTitle !== undefined) profileData.job_title = data.jobTitle;
+    if (data.manager !== undefined) profileData.manager = data.manager;
+    if (data.avatar !== undefined) profileData.avatar = data.avatar;
+    if (data.workStatus !== undefined) profileData.work_status = data.workStatus;
+    if (data.joinedYear !== undefined) profileData.joined_year = data.joinedYear;
+    if (data.about !== undefined) profileData.about = data.about;
+    if (data.whatILoveAboutJob !== undefined) profileData.what_i_love_about_job = data.whatILoveAboutJob;
+    if (data.skills !== undefined) profileData.skills = data.skills;
+    if (data.certifications !== undefined) profileData.certifications = data.certifications;
+    if (data.interests !== undefined) profileData.interests = data.interests;
+    if (data.dob !== undefined) profileData.dob = data.dob;
+    if (data.residingAddress !== undefined) profileData.residing_address = data.residingAddress;
+    if (data.nationality !== undefined) profileData.nationality = data.nationality;
+    if (data.gender !== undefined) profileData.gender = data.gender;
+    if (data.maritalStatus !== undefined) profileData.marital_status = data.maritalStatus;
+    if (data.bankDetails !== undefined) profileData.bank_details = data.bankDetails;
+    if (data.salaryInfo !== undefined) profileData.salary_info = data.salaryInfo;
+
+    if (data.role !== undefined) userData.role = data.role;
+    if (data.email !== undefined) userData.email = data.email.toLowerCase().trim();
+
+    if (Object.keys(userData).length > 1) {
+      await supabaseAdmin.from('users').update(userData).eq('id', userId);
+    }
+
+    const { error: updateError } = await supabaseAdmin
+      .from('profiles')
+      .update(profileData)
+      .eq('user_id', userId);
+
+    if (updateError) {
+      console.error('[Admin Employee Update Error]:', updateError);
+      throw new AppError(500, ErrorCodes.DATABASE_ERROR, 'Failed to update employee details');
+    }
+
+    return this.getEmployeeById(userId);
   }
 }
