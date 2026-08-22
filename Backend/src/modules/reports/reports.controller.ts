@@ -23,4 +23,13 @@ export class ReportsController {
       next(error);
     }
   }
+
+  async getPayrollSummary(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await reportsService.getPayrollSummary();
+      return sendSuccess(res, result, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
