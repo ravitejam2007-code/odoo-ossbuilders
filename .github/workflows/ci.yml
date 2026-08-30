@@ -1,0 +1,43 @@
+name: Odoo OSS Builders
+
+on:
+   push:
+      branches:
+         - main
+
+jobs:
+   build-and-test:
+
+     runs-on: ubuntu-latest
+
+     steps:
+       - name: Checkout code from GitHub Actions
+         uses: actions/checkout@v4
+
+       # Install dependencies using npm or yarn (depending on your project structure)
+       if [[ ! "$GITHUB_REPOSITORY" =~ ^.*\.github.io$ ]]; then
+           run: |
+               echo "Installing dependencies..."
+               npx install --save-dev @types/bcryptjs @typescript/cookie-parser @typescript/cors @express express-rate-limit framer-motion helmetjsonwebtoken lucide-reactmorgan multer nodemailer react typescript vercel/node
+
+           # Add a script to build the TypeScript files
+           add_script:
+             - |-
+                 echo "Building TypeScript..."
+                 npx tsc src/**/*.ts
+
+         else
+           // Run tests locally using npm test or yarn test (depending on project structure)
+           if [[ ! "$GITHUB_WORKFLOW" =~ ^.*\.github.io$ ]]; then
+               run: |
+                   echo "Running local tests..."
+                   npx mocha --require ts-node/register ./src/
+
+               # If you want to use Cypress for testing, uncomment this line and replace "./cypress/support/index.js"
+               # cypress_test_command: 'npx cy'
+           fi
+       end_if
+
+     outputs:
+       build-status:
+         description: The status of the last successful build.
